@@ -20,7 +20,7 @@ export const sampleCustomers = [
     phone: '03-1234-5678',
     status: '商談中',
     industry: 'IT・ソフトウェア',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: 'クラウド移行プロジェクト。予算500万円。Q2中に決定したい意向あり。',
     nextAction: { type: 'オンライン商談', date: '2026-04-02', memo: '提案書フィードバック確認' },
     history: makeHistory(1, [
@@ -39,7 +39,7 @@ export const sampleCustomers = [
     phone: '06-9876-5432',
     status: '提案済',
     industry: '小売・EC',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: 'ECサイト向けCRM導入検討。費用対効果重視。',
     nextAction: { type: '電話', date: '2026-03-28', memo: '提案書確認と質問対応' },
     history: makeHistory(2, [
@@ -58,7 +58,7 @@ export const sampleCustomers = [
     phone: '03-5555-7777',
     status: '成約',
     industry: 'メディア・広告',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: 'マーケティングオートメーション導入。契約締結済み。オンボーディング中。',
     nextAction: { type: '訪問', date: '2026-04-05', memo: 'オンボーディング第2回' },
     history: makeHistory(3, [
@@ -78,7 +78,7 @@ export const sampleCustomers = [
     phone: '045-333-1111',
     status: '失注',
     industry: '医療・ヘルスケア',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '電子カルテ連携。競合他社に決定。将来的な再提案の可能性あり。',
     nextAction: null,
     history: makeHistory(4, [
@@ -98,7 +98,7 @@ export const sampleCustomers = [
     phone: '03-8888-4444',
     status: 'リード',
     industry: '不動産',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: '展示会で名刺交換。物件管理システムの見直しを検討中。',
     nextAction: { type: 'メール', date: '2026-03-27', memo: '資料送付と初回商談打診' },
     history: makeHistory(5, [
@@ -115,7 +115,7 @@ export const sampleCustomers = [
     phone: '052-222-3333',
     status: '商談中',
     industry: '製造業',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '生産管理システムとのAPI連携。POCフェーズ進行中。',
     nextAction: { type: 'オンライン商談', date: '2026-04-08', memo: 'POC結果報告と次フェーズ提案' },
     history: makeHistory(6, [
@@ -134,7 +134,7 @@ export const sampleCustomers = [
     phone: '03-6666-2222',
     status: '提案済',
     industry: '非営利・教育',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: 'デジタルデバイド解消プロジェクト向け。補助金活用予定。予算確定待ち。',
     nextAction: { type: '電話', date: '2026-04-10', memo: '補助金申請結果の確認' },
     history: makeHistory(7, [
@@ -152,7 +152,7 @@ export const sampleCustomers = [
     phone: '06-5555-8888',
     status: 'リード',
     industry: '物流・運輸',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '配送管理システムの刷新検討。複数ベンダー比較中。来期導入目標。',
     nextAction: { type: '訪問', date: '2026-04-15', memo: '初回訪問・ヒアリング' },
     history: makeHistory(8, [
@@ -169,7 +169,7 @@ export const sampleCustomers = [
     phone: '052-888-1234',
     status: '商談中',
     industry: '金融・保険',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: '基幹システムのクラウド移行。セキュリティ要件が厳格。FISC準拠必須。',
     nextAction: { type: '訪問', date: '2026-04-03', memo: 'セキュリティ要件詳細確認' },
     history: makeHistory(9, [
@@ -188,7 +188,7 @@ export const sampleCustomers = [
     phone: '03-4444-6666',
     status: '成約',
     industry: '食品・飲料',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: 'サプライチェーン管理システム。3年契約で締結。年間1200万円。',
     nextAction: { type: 'オンライン商談', date: '2026-04-01', memo: '月次レビューミーティング' },
     history: makeHistory(10, [
@@ -207,7 +207,7 @@ export const sampleCustomers = [
     phone: '03-7777-3333',
     status: '提案済',
     industry: 'コンサルティング',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: 'コンサルファーム向け案件管理ツール。エンタープライズプランを検討中。',
     nextAction: { type: '訪問', date: '2026-04-07', memo: '役員プレゼン同席' },
     history: makeHistory(11, [
@@ -225,7 +225,7 @@ export const sampleCustomers = [
     phone: '06-3333-9999',
     status: 'リード',
     industry: '建設・土木',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '現場管理アプリの導入検討。スマホでの現場入力が希望。',
     nextAction: { type: 'メール', date: '2026-03-31', memo: '製品デモの日程調整' },
     history: makeHistory(12, [
@@ -242,7 +242,7 @@ export const sampleCustomers = [
     phone: '03-2222-8888',
     status: '商談中',
     industry: '小売・EC',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: '年商50億円のECモール運営。顧客データ分析ツールの導入検討。',
     nextAction: { type: 'オンライン商談', date: '2026-04-04', memo: 'デモ環境を使ったデータ分析デモ' },
     history: makeHistory(13, [
@@ -260,7 +260,7 @@ export const sampleCustomers = [
     phone: '011-555-7777',
     status: '提案済',
     industry: '医療・ヘルスケア',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '病院向け予約管理・患者CRM。300床規模。年度内導入を目指している。',
     nextAction: { type: '訪問', date: '2026-04-12', memo: '院内見学と詳細要件確認' },
     history: makeHistory(14, [
@@ -278,7 +278,7 @@ export const sampleCustomers = [
     phone: '03-1111-9999',
     status: '失注',
     industry: '教育',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: '学習塾向け管理システム。予算不足により今期は見送り。来期再提案予定。',
     nextAction: null,
     history: makeHistory(15, [
@@ -297,7 +297,7 @@ export const sampleCustomers = [
     phone: '06-7777-4444',
     status: '商談中',
     industry: '物流・運輸',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '倉庫管理WMSとの連携。現在5拠点で運用中。拡張を検討。',
     nextAction: { type: 'オンライン商談', date: '2026-04-09', memo: 'WMS連携の技術仕様確認' },
     history: makeHistory(16, [
@@ -315,7 +315,7 @@ export const sampleCustomers = [
     phone: '03-9999-1111',
     status: '成約',
     industry: '不動産',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: '物件情報管理・顧客管理の統合CRM。全国50拠点に展開。年間2400万円で契約。',
     nextAction: { type: 'オンライン商談', date: '2026-04-01', memo: 'Q1実績レビューと追加機能要望確認' },
     history: makeHistory(17, [
@@ -334,7 +334,7 @@ export const sampleCustomers = [
     phone: '06-1111-5555',
     status: 'リード',
     industry: '製造業',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '工場IoTデータ管理。製造ラインのデジタル化プロジェクトが始まったばかり。',
     nextAction: { type: '訪問', date: '2026-04-16', memo: '工場見学と課題ヒアリング' },
     history: makeHistory(18, [
@@ -351,7 +351,7 @@ export const sampleCustomers = [
     phone: '03-6543-2109',
     status: '提案済',
     industry: 'メディア・広告',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: 'デジタル広告案件管理システム。100名規模のチームで利用予定。',
     nextAction: { type: 'オンライン商談', date: '2026-04-06', memo: '役員承認を経た最終回答待ち' },
     history: makeHistory(19, [
@@ -369,7 +369,7 @@ export const sampleCustomers = [
     phone: '03-3838-4747',
     status: '商談中',
     industry: '食品・飲料',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: 'フードデリバリー向け顧客管理。会員数50万人。データ連携が重要。',
     nextAction: { type: '訪問', date: '2026-04-10', memo: '技術要件・データ移行の詳細確認' },
     history: makeHistory(20, [
@@ -387,7 +387,7 @@ export const sampleCustomers = [
     phone: '011-222-3333',
     status: 'リード',
     industry: 'その他',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: 'スマート農業向けデータ管理。農場20ヶ所のセンサーデータを一元管理したい。',
     nextAction: { type: 'オンライン商談', date: '2026-04-14', memo: '初回オンライン商談' },
     history: makeHistory(21, [
@@ -404,7 +404,7 @@ export const sampleCustomers = [
     phone: '03-5678-1234',
     status: '失注',
     industry: 'IT・ソフトウェア',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: 'セキュリティ系スタートアップ。競合のB社製品を選択。機能面で差別化できなかった。',
     nextAction: null,
     history: makeHistory(22, [
@@ -423,7 +423,7 @@ export const sampleCustomers = [
     phone: '054-111-2222',
     status: '成約',
     industry: '小売・EC',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: '地域密着型の小売業。スモールプランで契約。長期利用が見込める優良顧客。',
     nextAction: { type: '電話', date: '2026-04-03', memo: '利用状況の確認とアップセル提案' },
     history: makeHistory(23, [
@@ -441,7 +441,7 @@ export const sampleCustomers = [
     phone: '03-8765-4321',
     status: '商談中',
     industry: 'その他',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: 'エネルギー業界の大手。顧客数1,000万件のビッグデータ活用を検討。',
     nextAction: { type: 'オンライン商談', date: '2026-04-11', memo: 'データ基盤の要件定義ミーティング' },
     history: makeHistory(24, [
@@ -459,7 +459,7 @@ export const sampleCustomers = [
     phone: '03-9012-3456',
     status: 'リード',
     industry: '教育',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: 'オンライン学習プラットフォーム。受講者管理・進捗追跡ツールを探している。',
     nextAction: { type: 'メール', date: '2026-04-02', memo: '事例資料とデモ環境へのアクセス案内' },
     history: makeHistory(25, [
@@ -476,7 +476,7 @@ export const sampleCustomers = [
     phone: '03-3456-7890',
     status: '提案済',
     industry: '物流・運輸',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '国内最大級の物流会社。ドライバー管理・配車最適化システム。決裁は取締役会。',
     nextAction: { type: '訪問', date: '2026-04-13', memo: '取締役会向けプレゼン資料の最終確認' },
     history: makeHistory(26, [
@@ -495,7 +495,7 @@ export const sampleCustomers = [
     phone: '06-2345-6789',
     status: '商談中',
     industry: '小売・EC',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: '全国500店舗のチェーン店。POS連携と会員管理の統合システムを検討。',
     nextAction: { type: 'オンライン商談', date: '2026-04-05', memo: 'POS連携の技術詳細確認' },
     history: makeHistory(27, [
@@ -513,7 +513,7 @@ export const sampleCustomers = [
     phone: '092-555-6666',
     status: 'リード',
     industry: '医療・ヘルスケア',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '九州地区の医療機器販売会社。顧客病院向けのアフターサービス管理ツールを探している。',
     nextAction: { type: '電話', date: '2026-04-01', memo: '初回電話・ニーズ確認' },
     history: makeHistory(28, [
@@ -530,7 +530,7 @@ export const sampleCustomers = [
     phone: '03-7654-3210',
     status: '失注',
     industry: '建設・土木',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: '建築設計事務所向けプロジェクト管理ツール。別ベンダーのBIMツールに決定。',
     nextAction: null,
     history: makeHistory(29, [
@@ -549,7 +549,7 @@ export const sampleCustomers = [
     phone: '03-2109-8765',
     status: '提案済',
     industry: '金融・保険',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '保険代理店向けCRM。全国200代理店への展開。コンプライアンス要件あり。',
     nextAction: { type: 'オンライン商談', date: '2026-04-08', memo: 'コンプライアンスチェックの結果確認' },
     history: makeHistory(30, [
@@ -567,7 +567,7 @@ export const sampleCustomers = [
     phone: '03-4567-8901',
     status: '商談中',
     industry: 'IT・ソフトウェア',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: 'SaaS系スタートアップ。自社プロダクトとの連携APIが必要。',
     nextAction: { type: 'オンライン商談', date: '2026-04-03', memo: 'API連携の技術仕様確認' },
     history: makeHistory(31, [
@@ -585,7 +585,7 @@ export const sampleCustomers = [
     phone: '045-678-9012',
     status: '成約',
     industry: '物流・運輸',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '中規模物流会社。2年契約で成約。自動化ラインとの連携が決め手。',
     nextAction: { type: 'オンライン商談', date: '2026-04-02', memo: '導入後30日レビューミーティング' },
     history: makeHistory(32, [
@@ -604,7 +604,7 @@ export const sampleCustomers = [
     phone: '03-1357-2468',
     status: 'リード',
     industry: 'その他',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: '全国30ホテルの会員管理。現在のシステムが老朽化。更新時期が来年。',
     nextAction: { type: '訪問', date: '2026-04-18', memo: '要件ヒアリングと既存システム確認' },
     history: makeHistory(33, [
@@ -621,7 +621,7 @@ export const sampleCustomers = [
     phone: '052-345-6789',
     status: '提案済',
     industry: '製造業',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '自動車部品メーカー。グローバル展開する生産管理システムとの連携。',
     nextAction: { type: 'オンライン商談', date: '2026-04-07', memo: 'グローバル対応の仕様確認（多言語・多通貨）' },
     history: makeHistory(34, [
@@ -639,7 +639,7 @@ export const sampleCustomers = [
     phone: '075-456-7890',
     status: '商談中',
     industry: '医療・ヘルスケア',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: '地域医療連携のデジタル化。加盟病院50施設への一斉展開。補助金対象事業。',
     nextAction: { type: 'オンライン商談', date: '2026-04-09', memo: '補助金申請書類の確認と加盟施設説明会の準備' },
     history: makeHistory(35, [
@@ -658,7 +658,7 @@ export const sampleCustomers = [
     phone: '03-8901-2345',
     status: 'リード',
     industry: '金融・保険',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: 'フィンテックスタートアップ。顧客オンボーディングの自動化ニーズあり。',
     nextAction: { type: 'オンライン商談', date: '2026-04-04', memo: '製品デモ（30分）' },
     history: makeHistory(36, [
@@ -675,7 +675,7 @@ export const sampleCustomers = [
     phone: '06-3456-7890',
     status: '提案済',
     industry: '小売・EC',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: 'オムニチャネル対応の会員管理。実店舗1,000店とECの統合が目標。',
     nextAction: { type: '訪問', date: '2026-04-11', memo: '実店舗デモと現場スタッフへの説明' },
     history: makeHistory(37, [
@@ -693,7 +693,7 @@ export const sampleCustomers = [
     phone: '03-0123-4567',
     status: '成約',
     industry: 'IT・ソフトウェア',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: 'スタートアップ向けスモールプラン。急成長中で今後のアップセルが期待できる。',
     nextAction: { type: '電話', date: '2026-04-05', memo: 'シリーズBラウンド後の拡張プラン相談' },
     history: makeHistory(38, [
@@ -711,7 +711,7 @@ export const sampleCustomers = [
     phone: '06-6789-0123',
     status: '商談中',
     industry: '物流・運輸',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: '大阪・東京間の幹線輸送会社。ドライバー管理アプリの全社展開を検討。',
     nextAction: { type: 'オンライン商談', date: '2026-04-06', memo: 'ドライバーアプリの操作デモ' },
     history: makeHistory(39, [
@@ -729,7 +729,7 @@ export const sampleCustomers = [
     phone: '03-2345-6789',
     status: '失注',
     industry: '建設・土木',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '建設業向けCRM。既存のERPベンダーのCRM機能を利用することに決定。',
     nextAction: null,
     history: makeHistory(40, [
@@ -748,7 +748,7 @@ export const sampleCustomers = [
     phone: '03-5555-1234',
     status: '提案済',
     industry: '小売・EC',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: 'D2Cブランドの会員管理・LTV向上施策支援。会員数30万人。',
     nextAction: { type: 'オンライン商談', date: '2026-04-14', memo: 'LTV分析デモンストレーション' },
     history: makeHistory(41, [
@@ -766,7 +766,7 @@ export const sampleCustomers = [
     phone: '082-333-4444',
     status: 'リード',
     industry: '製造業',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '自動車プレス部品メーカー。製造実行システム(MES)との連携を検討。',
     nextAction: { type: 'オンライン商談', date: '2026-04-17', memo: 'MES連携の初回相談' },
     history: makeHistory(42, [
@@ -783,7 +783,7 @@ export const sampleCustomers = [
     phone: '03-7890-1234',
     status: '成約',
     industry: 'コンサルティング',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: '中堅コンサルファーム。20名でスタンダードプランを利用中。拡張の余地あり。',
     nextAction: { type: '電話', date: '2026-04-08', memo: 'Q1利用状況レビューと追加席の検討' },
     history: makeHistory(43, [
@@ -801,7 +801,7 @@ export const sampleCustomers = [
     phone: '022-789-0123',
     status: 'リード',
     industry: 'その他',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '農協の組合員管理システム。組合員2万人のデジタル化を検討。',
     nextAction: { type: '訪問', date: '2026-04-20', memo: '仙台本部への初回訪問' },
     history: makeHistory(44, [
@@ -818,7 +818,7 @@ export const sampleCustomers = [
     phone: '03-1234-0987',
     status: '商談中',
     industry: 'IT・ソフトウェア',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: 'クラウドインフラ会社。自社の営業チーム向けCRM刷新。30名規模。',
     nextAction: { type: 'オンライン商談', date: '2026-04-04', memo: '他ツールからの移行要件確認' },
     history: makeHistory(45, [
@@ -836,7 +836,7 @@ export const sampleCustomers = [
     phone: '03-6666-7777',
     status: '提案済',
     industry: 'その他',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '電力インフラ会社。顧客100万件規模のデータ活用基盤構築。',
     nextAction: { type: '訪問', date: '2026-04-16', memo: '情報システム部長との技術詳細確認' },
     history: makeHistory(46, [
@@ -855,7 +855,7 @@ export const sampleCustomers = [
     phone: '03-9876-5432',
     status: '失注',
     industry: 'IT・ソフトウェア',
-    assignedTo: '鈴木 一郎',
+    assignedTo: '片岡 仙充',
     memo: 'AI系スタートアップ。自前でCRM構築することに決定。エンジニアリソースが豊富。',
     nextAction: null,
     history: makeHistory(47, [
@@ -873,7 +873,7 @@ export const sampleCustomers = [
     phone: '096-444-5555',
     status: '商談中',
     industry: '食品・飲料',
-    assignedTo: '山田 優子',
+    assignedTo: '岡田 明日香',
     memo: '九州の食品メーカー。取引先管理と受発注管理の統合を検討。',
     nextAction: { type: 'オンライン商談', date: '2026-04-13', memo: '受発注システムとの連携デモ' },
     history: makeHistory(48, [
@@ -891,7 +891,7 @@ export const sampleCustomers = [
     phone: '03-3333-7777',
     status: '提案済',
     industry: '教育',
-    assignedTo: '田中 太郎',
+    assignedTo: '豊田 剛史',
     memo: '語学スクール50校舎向けの生徒・保護者管理システム。月額固定費を抑えたい意向。',
     nextAction: { type: '電話', date: '2026-04-09', memo: '月額費用の交渉と条件確認' },
     history: makeHistory(49, [
@@ -909,7 +909,7 @@ export const sampleCustomers = [
     phone: '03-2222-4444',
     status: 'リード',
     industry: 'コンサルティング',
-    assignedTo: '佐藤 花子',
+    assignedTo: '木村 亮介',
     memo: '人材紹介会社。求人案件・候補者管理の効率化が目的。現在エクセル管理。',
     nextAction: { type: 'メール', date: '2026-03-30', memo: '人材業界特化の事例資料送付' },
     history: makeHistory(50, [
