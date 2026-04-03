@@ -26,7 +26,6 @@ const VIEWS = [
   { key: 'ai', label: '🤖 AI分析' },
 ]
 const PERIOD_OPTIONS = [
-  { key: '週間', label: '週間' },
   { key: '月間', label: '月間' },
   { key: 'Q', label: 'Q（四半期）' },
   { key: '年度', label: '年度' },
@@ -220,7 +219,8 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
     const wonDeal = fc.filter(c => c.status === '成約').reduce((s, c) => s + salesInPeriod(c), 0)
     const pipelineDeal = fc.filter(c => c.status === '商談中' || c.status === '提案済').reduce((s, c) => s + salesInPeriod(c), 0)
     const forecastAB = fc.filter(c => c.forecast === 'A' || c.forecast === 'B').reduce((s, c) => s + salesInPeriod(c), 0)
-    return { total, active, won, overdue, weekActions, totalDeal: Math.round(totalDeal), wonDeal: Math.round(wonDeal), pipelineDeal: Math.round(pipelineDeal), forecastAB: Math.round(forecastAB) }
+    const periodCompanies = fc.filter(c => salesInPeriod(c) > 0).length
+    return { total, active, won, overdue, weekActions, totalDeal: Math.round(totalDeal), wonDeal: Math.round(wonDeal), pipelineDeal: Math.round(pipelineDeal), forecastAB: Math.round(forecastAB), periodCompanies }
   }, [fc, todayStr, weekEndStr, fromStr, toStr])
 
   // Period-filtered activity KPIs
@@ -510,63 +510,32 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
             <div className="absolute inset-0 opacity-10"
               style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)' }} />
             <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-6">
-              {/* メイン：成約売上 */}
+              {/* メイン：期間売上 */}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-blue-200">成約売上</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-blue-200">売上合計</div>
                   <span className="text-xs bg-white/20 text-blue-100 rounded-full px-2 py-0.5">{periodLabel}</span>
                 </div>
                 <div className="text-5xl font-black tracking-tight leading-none">
-                  {stats.wonDeal.toLocaleString()}
+                  {stats.totalDeal.toLocaleString()}
                   <span className="text-2xl font-bold ml-2 text-blue-200">万円</span>
                 </div>
                 <div className="flex items-center gap-3 mt-2 text-sm text-blue-100">
-                  <span>🏆 {stats.won}件成約</span>
+                  <span>📊 {stats.periodCompanies}社取引</span>
                   <span className="opacity-50">|</span>
                   <span>👥 {stats.total}社</span>
                   {selectedRep !== '全体' && <span className="bg-white/20 rounded-full px-2 py-0.5 text-xs">{selectedRep}</span>}
                 </div>
               </div>
-              {/* サブ数値 */}
+              {/* サブ数値：取引社数 */}
               <div className="flex gap-4 sm:gap-6">
                 <div className="text-center">
-                  <div className="text-xs text-blue-200 mb-1">売上合計</div>
-                  <div className="text-2xl font-bold">{stats.totalDeal.toLocaleString()}</div>
-                  <div className="text-xs text-blue-300">万円</div>
-                </div>
-                <div className="w-px bg-white/20 hidden sm:block" />
-                <div className="text-center">
-                  <div className="text-xs text-blue-200 mb-1">パイプライン</div>
-                  <div className="text-2xl font-bold">{stats.pipelineDeal.toLocaleString()}</div>
-                  <div className="text-xs text-blue-300">万円</div>
-                </div>
-                <div className="w-px bg-white/20 hidden sm:block" />
-                <div className="text-center">
-                  <div className="text-xs text-blue-200 mb-1">A+Bヨミ</div>
-                  <div className="text-2xl font-bold">{stats.forecastAB.toLocaleString()}</div>
-                  <div className="text-xs text-blue-300">万円</div>
-                </div>
-                <div className="w-px bg-white/20 hidden sm:block" />
-                <div className="text-center">
-                  <div className="text-xs text-blue-200 mb-1">商談中</div>
-                  <div className="text-2xl font-bold">{stats.active}</div>
-                  <div className="text-xs text-blue-300">件</div>
+                  <div className="text-xs text-blue-200 mb-1">取引社数</div>
+                  <div className="text-2xl font-bold">{stats.periodCompanies.toLocaleString()}</div>
+                  <div className="text-xs text-blue-300">社</div>
                 </div>
               </div>
             </div>
-            {/* 達成率バー */}
-            {stats.totalDeal > 0 && (
-              <div className="relative z-10 mt-4">
-                <div className="flex justify-between text-xs text-blue-200 mb-1">
-                  <span>成約率 {stats.total > 0 ? Math.round(stats.won / stats.total * 100) : 0}%</span>
-                  <span>全体 {stats.totalDeal.toLocaleString()}万円</span>
-                </div>
-                <div className="w-full bg-white/20 rounded-full h-2">
-                  <div className="h-2 rounded-full bg-white/80 transition-all duration-700"
-                    style={{ width: `${Math.min(stats.wonDeal / stats.totalDeal * 100, 100)}%` }} />
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
