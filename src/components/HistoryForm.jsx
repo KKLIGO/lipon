@@ -1,6 +1,16 @@
 import React, { useState } from 'react'
 import { ASSIGNED_TO_OPTIONS } from '../data/sampleData'
 
+const NEXT_ACTION_TYPES = [
+  '電話', 'メール', '訪問', 'オンライン商談',
+  '商談', '取材', '振返り', '提案書送付', '見積送付', 'その他',
+]
+const NEXT_ACTION_ICONS = {
+  '電話': '📞', 'メール': '📧', '訪問': '🏢', 'オンライン商談': '💻',
+  '商談': '🤝', '取材': '🎤', '振返り': '🔄',
+  '提案書送付': '📄', '見積送付': '💰', 'その他': '📝',
+}
+
 export const CONTACT_METHODS = ['電話', 'メール', 'LINE', '訪問', 'Web']
 export const CONTACT_METHOD_ICONS = {
   '電話': '📞', 'メール': '📧', 'LINE': '💬', '訪問': '🏢', 'Web': '🌐',
@@ -33,9 +43,12 @@ export default function HistoryForm({ companyName, defaultSalesRep, onSave, onCa
     contactTypes: [],
     date: getTodayStr(),
     content: '',
-    contactPerson: '',       // お客さん側（自由記述）
-    ligoParticipants: defaultSalesRep ? [defaultSalesRep] : [],  // LIGO参加者（複数選択）
-    satisfaction: '',        // 応募/採用満足度
+    contactPerson: '',
+    ligoParticipants: defaultSalesRep ? [defaultSalesRep] : [],
+    satisfaction: '',
+    nextActionType: '電話',
+    nextActionDate: '',
+    nextActionMemo: '',
   })
   const [errors, setErrors] = useState({})
   const [ligoFreeText, setLigoFreeText] = useState('')
@@ -68,8 +81,11 @@ export default function HistoryForm({ companyName, defaultSalesRep, onSave, onCa
 
   function validate() {
     const e = {}
-    if (!form.content.trim()) e.content = '内容は必須です'
     if (!form.date) e.date = '日付は必須です'
+    if (form.contactTypes.length === 0) e.contactTypes = '接触内容を1つ以上選択してください'
+    if (form.ligoParticipants.length === 0) e.ligoParticipants = '参加者名（LIGO側）を1人以上選択してください'
+    if (!form.content.trim()) e.content = '内容は必須です'
+    if (!form.nextActionDate) e.nextActionDate = '次回アクションの予定日は必須です'
     return e
   }
 
@@ -80,12 +96,17 @@ export default function HistoryForm({ companyName, defaultSalesRep, onSave, onCa
     onSave({
       contactMethod: form.contactMethod,
       contactTypes: form.contactTypes,
-      type: form.contactMethod,   // backward compat
+      type: form.contactMethod,
       date: form.date,
       content: form.content,
       contactPerson: form.contactPerson,
       ligoParticipants: form.ligoParticipants,
       satisfaction: form.satisfaction,
+      nextAction: {
+        type: form.nextActionType,
+        date: form.nextActionDate,
+        memo: form.nextActionMemo,
+      },
     })
   }
 
@@ -108,7 +129,7 @@ export default function HistoryForm({ companyName, defaultSalesRep, onSave, onCa
 
           {/* 接触方法 — single select */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">接触方法</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">接触方法 <span className="text-red-500">*</span></label>
             <div className="grid grid-cols-5 gap-2">
               {CONTACT_METHODS.map(m => {
                 const selected = form.contactMethod === m
@@ -132,18 +153,21 @@ export default function HistoryForm({ companyName, defaultSalesRep, onSave, onCa
           {/* 接触内容 — multi select */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              接触内容
+              接触内容 <span className="text-red-500">*</span>
               <span className="text-xs text-gray-400 font-normal ml-1">（複数選択可）</span>
             </label>
             <div className="grid grid-cols-3 gap-2">
               {CONTACT_TYPES.map(t => {
                 const selected = form.contactTypes.includes(t)
                 return (
-                  <button key={t} type="button" onClick={() => toggleType(t)}
+                  <button key={t} type="button" onClick={() => {
+                    toggleType(t)
+                    if (errors.contactTypes) setErrors(er => { const n={...er}; delete n.contactTypes; return n })
+                  }}
                     className={`flex flex-col items-center gap-1 p-2.5 rounded-lg border text-xs font-medium transition-all ${
                       selected
                         ? 'border-green-500 bg-green-50 text-green-700 ring-2 ring-green-200'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
+                        : errors.contactTypes ? 'border-red-300 bg-white text-gray-600' : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
                     }`}
                   >
                     <span className="text-lg">{CONTACT_TYPE_ICONS[t]}</span>
@@ -152,6 +176,7 @@ export default function HistoryForm({ companyName, defaultSalesRep, onSave, onCa
                 )
               })}
             </div>
+            {errors.contactTypes && <p className="text-red-500 text-xs mt-1">{errors.contactTypes}</p>}
           </div>
 
           {/* Date */}
@@ -167,24 +192,28 @@ export default function HistoryForm({ companyName, defaultSalesRep, onSave, onCa
           {/* LIGO参加者 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              参加者名（LIGO側）
+              参加者名（LIGO側） <span className="text-red-500">*</span>
               <span className="text-xs text-gray-400 font-normal ml-1">（複数選択可）</span>
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
               {ASSIGNED_TO_OPTIONS.map(name => {
                 const selected = form.ligoParticipants.includes(name)
                 return (
-                  <button key={name} type="button" onClick={() => toggleLigoParticipant(name)}
+                  <button key={name} type="button" onClick={() => {
+                    toggleLigoParticipant(name)
+                    if (errors.ligoParticipants) setErrors(er => { const n={...er}; delete n.ligoParticipants; return n })
+                  }}
                     className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
                       selected
                         ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
+                        : errors.ligoParticipants ? 'bg-white text-gray-600 border-red-300 hover:border-blue-300' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
                     }`}>
                     {selected ? '✓ ' : ''}{name}
                   </button>
                 )
               })}
             </div>
+            {errors.ligoParticipants && <p className="text-red-500 text-xs mt-1">{errors.ligoParticipants}</p>}
             {/* Free text for additional participants */}
             <div className="flex gap-2">
               <input type="text" value={ligoFreeText} onChange={e => setLigoFreeText(e.target.value)}
@@ -245,6 +274,53 @@ export default function HistoryForm({ companyName, defaultSalesRep, onSave, onCa
               rows={4} placeholder="実施した内容、結果、顧客の反応など..."
               className={`form-input resize-none ${errors.content ? 'border-red-400' : ''}`} />
             {errors.content && <p className="text-red-500 text-xs mt-1">{errors.content}</p>}
+          </div>
+
+          {/* 次回アクション */}
+          <div className="border-t border-gray-200 pt-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-base">📅</span>
+              <label className="text-sm font-semibold text-gray-800">次回アクション <span className="text-red-500">*</span></label>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">アクション種別</label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {NEXT_ACTION_TYPES.map(t => (
+                    <button key={t} type="button"
+                      onClick={() => setForm(f => ({ ...f, nextActionType: t }))}
+                      className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg border text-xs font-medium transition-all ${
+                        form.nextActionType === t
+                          ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                      }`}
+                    >
+                      <span className="text-base">{NEXT_ACTION_ICONS[t]}</span>
+                      <span style={{fontSize:'10px'}}>{t}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  実施予定日 <span className="text-red-500">*</span>
+                </label>
+                <input type="date" value={form.nextActionDate}
+                  onChange={e => {
+                    setForm(f => ({ ...f, nextActionDate: e.target.value }))
+                    if (errors.nextActionDate) setErrors(er => { const n={...er}; delete n.nextActionDate; return n })
+                  }}
+                  className={`form-input text-sm ${errors.nextActionDate ? 'border-red-400' : ''}`} />
+                {errors.nextActionDate && <p className="text-red-500 text-xs mt-1">{errors.nextActionDate}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">メモ（任意）</label>
+                <input type="text" value={form.nextActionMemo}
+                  onChange={e => setForm(f => ({ ...f, nextActionMemo: e.target.value }))}
+                  placeholder="次回の目的・確認事項など..."
+                  className="form-input text-sm" />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-1">

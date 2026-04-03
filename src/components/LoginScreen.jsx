@@ -28,12 +28,6 @@ export default function LoginScreen({ onLogin }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center justify-center p-4">
-      <div
-        className="text-5xl md:text-7xl mb-8 text-center drop-shadow-lg"
-        style={{ fontFamily: "'Yuji Syuku', serif", color: '#e91e8c', fontWeight: 700, WebkitTextStroke: '1px #e91e8c' }}
-      >
-        ようこそ！熱狂様！
-      </div>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">

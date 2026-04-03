@@ -51,14 +51,14 @@ function KpiCard({ icon, label, value, sub, color='blue', alert=false, onClick }
     red:'bg-red-100 text-red-600', yellow:'bg-yellow-100 text-yellow-600', purple:'bg-purple-100 text-purple-600' }
   const Tag = onClick ? 'button' : 'div'
   return (
-    <Tag onClick={onClick} className={`card p-4 text-left w-full ${alert && value > 0 ? 'border-l-4 border-red-400' : ''} ${onClick ? 'hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group' : ''}`}>
-      <div className="flex items-start gap-3">
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-base flex-shrink-0 ${colors[color]}`}>{icon}</div>
+    <Tag onClick={onClick} className={`card p-3 sm:p-4 text-left w-full ${alert && value > 0 ? 'border-l-4 border-red-400' : ''} ${onClick ? 'hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group' : ''}`}>
+      <div className="flex items-start gap-2 sm:gap-3">
+        <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-sm sm:text-base flex-shrink-0 ${colors[color]}`}>{icon}</div>
         <div className="flex-1 min-w-0">
-          <div className={`text-xl font-bold ${alert && value > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+          <div className={`text-lg sm:text-xl font-bold ${alert && value > 0 ? 'text-red-600' : 'text-gray-900'}`}>
             {typeof value === 'number' ? value.toLocaleString() : value}
           </div>
-          <div className="text-xs text-gray-500">{label}</div>
+          <div className="text-xs text-gray-500 leading-tight mt-0.5 break-keep">{label}</div>
           {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
           {onClick && <div className="text-xs text-blue-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">→ 顧客一覧で確認</div>}
         </div>
@@ -188,14 +188,25 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
     return (history || []).filter(h => h.date && h.date >= fromStr && h.date <= toStr)
   }
 
-  // monthlySales の期間合計を計算するヘルパー
+  // 期間内売上を計算するヘルパー
   function salesInPeriod(c) {
-    const ms = c.monthlySales
-    if (!ms || typeof ms !== 'object') return 0
-    // fromStr/toStr は YYYY-MM-DD。monthlySales は YYYY-MM キー
-    const fromM = fromStr.slice(0, 7)
-    const toM = toStr.slice(0, 7)
-    return Object.entries(ms).reduce((sum, [m, v]) => (m >= fromM && m <= toM ? sum + v : sum), 0) / 10000
+    // 月次データがある場合はそちらを優先（YYYY-MM キー）
+    if (c.monthlySales && Object.keys(c.monthlySales).length > 0) {
+      const fromM = fromStr.slice(0, 7)
+      const toM = toStr.slice(0, 7)
+      return Object.entries(c.monthlySales).reduce((sum, [m, v]) => (m >= fromM && m <= toM ? sum + v : sum), 0) / 10000
+    }
+    // 年次データ（annualSales）: その年の全期間（1/1〜12/31）がperiod内に含まれる年のみ合算
+    if (c.annualSales && Object.keys(c.annualSales).length > 0) {
+      return Object.entries(c.annualSales).reduce((sum, [y, v]) => {
+        const yearStart = `${y}-01-01`
+        const yearEnd = `${y}-12-31`
+        // 年全体がperiod範囲内に収まる場合のみカウント
+        if (yearStart >= fromStr && yearEnd <= toStr) return sum + v
+        return sum
+      }, 0) / 10000
+    }
+    return 0
   }
 
   // Snapshot KPIs (一部period対応)
@@ -294,7 +305,7 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
       if (c.status === '成約') map[rep].won++
       if (c.status === '商談中' || c.status === '提案済') map[rep].active++
       if (c.nextAction?.date && c.nextAction.date < todayStr) map[rep].overdue++
-      map[rep].deal += c.dealAmount ? Number(c.dealAmount) : 0
+      map[rep].deal += salesInPeriod(c)
     })
     return Object.values(map).sort((a,b) => b.periodActivities - a.periodActivities)
   }, [customers, todayStr, fromStr, toStr])
@@ -304,7 +315,7 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
     fc.forEach(c => {
       if (!map[c.status]) map[c.status] = { status:c.status, count:0, amount:0 }
       map[c.status].count++
-      map[c.status].amount += c.dealAmount ? Number(c.dealAmount) : 0
+      map[c.status].amount += salesInPeriod(c)
     })
     return ['リード','商談中','提案済','成約','失注'].filter(s => map[s])
       .map(s => ({ ...map[s], color:STATUS_COLORS[s] }))
@@ -375,15 +386,15 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
       <div className="card p-3 space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-gray-500 flex-shrink-0">担当者</span>
-          {allReps.length > 8 && (
-            <input
-              type="text"
-              value={repSearch}
-              onChange={e => setRepSearch(e.target.value)}
-              placeholder="名前で絞り込み..."
-              className="text-xs border border-gray-200 rounded-lg px-2 py-1 w-36 focus:outline-none focus:border-blue-400"
-            />
-          )}
+          <select
+            value={selectedRep}
+            onChange={e => setSelectedRep(e.target.value)}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-400 bg-white flex-shrink-0"
+          >
+            {allReps.map(rep => (
+              <option key={rep} value={rep}>{rep}</option>
+            ))}
+          </select>
           {selectedRep !== '全体' && (
             <button onClick={() => setSelectedRep('全体')}
               className="text-xs text-gray-400 hover:text-gray-600 ml-auto flex-shrink-0">
@@ -391,32 +402,13 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
             </button>
           )}
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-          {filteredReps.map((rep, i) => {
-            const color = rep === '全体' ? '#6b7280' : REP_COLORS[(allReps.indexOf(rep) - 1) % REP_COLORS.length]
-            const isSelected = selectedRep === rep
-            return (
-              <button key={rep} onClick={() => setSelectedRep(rep)}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                  isSelected ? 'text-white border-transparent shadow-sm' : 'text-gray-600 bg-white border-gray-200 hover:border-gray-300'
-                }`}
-                style={isSelected ? { backgroundColor: color } : {}}>
-                {rep !== '全体' && (
-                  <span className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.6)' : color }} />
-                )}
-                {rep === '全体' ? '🌐 全体' : rep}
-              </button>
-            )
-          })}
-        </div>
       </div>
 
       {/* Period filter */}
       <div className="card p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs font-medium text-gray-500 flex-shrink-0">期間</span>
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto">
             {PERIOD_OPTIONS.map(p => (
               <button key={p.key} onClick={() => {
                   setPeriodMode(p.key)
@@ -425,7 +417,7 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
                   else if (p.key === '年度') setFiscalYear(t.getFullYear())
                   else if (p.key === '月') { setSelectedMonth(t.getMonth()+1); setSelectedMonthYear(t.getFullYear()) }
                 }}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                className={`flex-shrink-0 whitespace-nowrap px-3 py-1 rounded text-xs font-medium transition-all ${
                   periodMode === p.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}>
                 {p.label}
@@ -486,24 +478,26 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
       </div>
 
       {/* View Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
-        {VIEWS.map(v => {
-          const isAlert = v.key === 'alert'
-          const hpBadge = isAlert && hpMonitor ? hpMonitor.changedCount : 0
-          return (
-            <button key={v.key} onClick={() => setActiveView(v.key)}
-              className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeView === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}>
-              {v.label}
-              {hpBadge > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full font-bold">
-                  {hpBadge}
-                </span>
-              )}
-            </button>
-          )
-        })}
+      <div className="overflow-x-auto">
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-max min-w-full sm:w-fit sm:min-w-0">
+          {VIEWS.map(v => {
+            const isAlert = v.key === 'alert'
+            const hpBadge = isAlert && hpMonitor ? hpMonitor.changedCount : 0
+            return (
+              <button key={v.key} onClick={() => setActiveView(v.key)}
+                className={`relative flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeView === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}>
+                {v.label}
+                {hpBadge > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full font-bold">
+                    {hpBadge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* ===== SUMMARY ===== */}
@@ -573,63 +567,19 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
               onClick={onNavigateToList ? () => onNavigateToList({ status: '商談中', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
             <KpiCard icon="🏆" label="成約件数" value={stats.won} color="green"
               onClick={onNavigateToList ? () => onNavigateToList({ status: '成約', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
-            <KpiCard icon="💰" label="売上合計（万円）" value={stats.totalDeal} color="yellow"
+            <KpiCard icon="💰" label="売上合計" value={stats.totalDeal} color="yellow"
               onClick={onNavigateToList ? () => onNavigateToList({ status: '成約', rep: selectedRep === '全体' ? '' : selectedRep, sort: 'dealAmount' }) : undefined} />
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiCard icon="📋" label={`活動件数（${periodLabel}）`} value={periodStats.totalAct} color="blue" />
-            <KpiCard icon="📅" label="今週アクション予定" value={stats.weekActions} color="purple" />
+            <KpiCard icon="📋" label={`活動件数`} sub={periodLabel} value={periodStats.totalAct} color="blue" />
+            <KpiCard icon="📅" label="今週アクション" value={stats.weekActions} color="purple" />
             <KpiCard icon="⚠️" label="期限切れ" value={stats.overdue} color="red" alert />
-            <KpiCard icon="📊" label="1社平均活動（全期間）"
+            <KpiCard icon="📊" label="1社平均活動"
               value={stats.total > 0 ? (fc.reduce((s,c) => s+(c.history?.length||0),0)/stats.total).toFixed(1) : '0'}
               color="blue" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <div className="card p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">ステータス内訳</h2>
-              {statusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={190}>
-                  <PieChart>
-                    <Pie data={statusData} cx="50%" cy="50%" innerRadius={42} outerRadius={70} paddingAngle={3} dataKey="value">
-                      {statusData.map(e => <Cell key={e.name} fill={STATUS_COLORS[e.name]||'#94a3b8'} />)}
-                    </Pie>
-                    <Tooltip formatter={(v,n) => [`${v}社`, n]} />
-                    <Legend formatter={v => <span className="text-xs">{v}</span>} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">データなし</div>}
-            </div>
-            <div className="card p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">顧客関係性</h2>
-              {relationshipData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={190}>
-                  <PieChart>
-                    <Pie data={relationshipData} cx="50%" cy="50%" innerRadius={42} outerRadius={70} paddingAngle={3} dataKey="value">
-                      {relationshipData.map(e => <Cell key={e.name} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v,n) => [`${v}社`, n]} />
-                    <Legend formatter={v => <span className="text-xs">{v}</span>} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">未設定</div>}
-            </div>
-            <div className="card p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">応募/採用満足度 <span className="text-xs text-gray-400 font-normal">（{periodLabel}）</span></h2>
-              {satisfactionData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={190}>
-                  <PieChart>
-                    <Pie data={satisfactionData} cx="50%" cy="50%" innerRadius={42} outerRadius={70} paddingAngle={3} dataKey="value">
-                      {satisfactionData.map(e => <Cell key={e.name} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v,n) => [`${v}件`, n]} />
-                    <Legend formatter={v => <span className="text-xs">{v}</span>} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">期間内の記録なし</div>}
-            </div>
-          </div>
 
           {/* ABCD */}
           <div className="card p-5">

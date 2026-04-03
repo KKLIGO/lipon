@@ -46,22 +46,8 @@ export default function Sidebar({
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            メインメニュー
-          </div>
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => { onNavigate(item.id); onClose() }}
-              className={`sidebar-link w-full text-left ${currentPage === item.id ? 'active' : ''}`}
-            >
-              <span className="text-base">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-
           {/* Quick actions */}
-          <div className="px-3 pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
             クイックアクション
           </div>
           <button
@@ -78,6 +64,20 @@ export default function Sidebar({
             <span className="text-base">➕</span>
             <span>新規お客さん登録</span>
           </button>
+
+          <div className="px-3 pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            メインメニュー
+          </div>
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { onNavigate(item.id); onClose() }}
+              className={`sidebar-link w-full text-left ${currentPage === item.id ? 'active' : ''}`}
+            >
+              <span className="text-base">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
 
           {/* Integrations */}
           <div className="px-3 pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">

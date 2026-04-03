@@ -58,19 +58,48 @@ function getPeriodRange(period, customMonth, customFrom, customTo, qtr, qtrYear,
   return null
 }
 
-// 前月・前Q比グロースフラグ計算
-// yomi=スナップ予測, deal=実売上
-// ratio = deal / yomi
-//   >= 1.3 → growth（伸び大）
-//   <= 0.7 かつ yomi>=30万 → decline（減少大）
-function getGrowthFlag(c, yomiMap) {
-  const yomi = yomiMap?.[c.id]
-  const deal = Number(c.dealAmount) || 0
-  if (yomi == null || yomi === 0) return null
-  const ratio = deal / yomi
+// 四半期のmonthlySales合計（万円）
+function getQSales(c, year, q) {
+  if (!c.monthlySales) return 0
+  const startMonth = (q - 1) * 3 + 1
+  let total = 0
+  for (let m = startMonth; m < startMonth + 3; m++) {
+    const key = `${year}-${String(m).padStart(2, '0')}`
+    total += Number(c.monthlySales[key] || 0)
+  }
+  return total / 10000
+}
+
+// 直近年 vs 前年比較で伸長・減少フラグ（monthlySalesは年次記録のため年比較）
+function getGrowthFlag(c) {
+  if (!c.monthlySales) return null
+  const years = Object.keys(c.monthlySales)
+    .map(ym => ym.slice(0, 4))
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .sort()
+  if (years.length < 2) return null
+  const latestYear = years[years.length - 1]
+  const prevYear = years[years.length - 2]
+  // 各年のmonthlySales合計
+  const latestSales = Object.entries(c.monthlySales)
+    .filter(([ym]) => ym.startsWith(latestYear))
+    .reduce((s, [, v]) => s + Number(v), 0)
+  const prevSales = Object.entries(c.monthlySales)
+    .filter(([ym]) => ym.startsWith(prevYear))
+    .reduce((s, [, v]) => s + Number(v), 0)
+  if (prevSales === 0) return null
+  const ratio = latestSales / prevSales
   if (ratio >= 1.3) return 'growth'
-  if (ratio <= 0.7 && yomi >= 30) return 'decline'
+  if (ratio <= 0.7) return 'decline'
   return null
+}
+
+// 全期間お取引総額（万円）
+function getTotalSales(c) {
+  if (c.monthlySales && Object.keys(c.monthlySales).length > 0) {
+    return Object.values(c.monthlySales).reduce((sum, v) => sum + Number(v), 0) / 10000
+  }
+  return Number(c.dealAmount) || 0
 }
 
 const GROWTH_FLAGS = [
@@ -83,50 +112,60 @@ const STATUSES = ['すべて', '商談中', '提案済', '成約', '失注', '�
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const FORECAST_COLORS = { A: 'bg-green-100 text-green-700', B: 'bg-blue-100 text-blue-700', C: 'bg-yellow-100 text-yellow-700', D: 'bg-gray-100 text-gray-500' }
 
+function getAnnualSales(c, year) {
+  if (c.annualSales && c.annualSales[String(year)] !== undefined) {
+    return c.annualSales[String(year)] / 10000
+  }
+  return 0
+}
+
 function calcSalesSummary(customers) {
   const now = new Date()
   const y = now.getFullYear(), m = now.getMonth() // 0-indexed
 
-  // Calendar year: January start
-  const fyStartStr = `${y}-01-01`
-
-  // Quarter start: 1Q=1-3月, 2Q=4-6月, 3Q=7-9月, 4Q=10-12月
+  // 年度: 1月〜12月（カレンダー年）
+  // Q: Q1=1-3月, Q2=4-6月, Q3=7-9月, Q4=10-12月
   const currentQ = Math.ceil((m + 1) / 3)
-  const qStartMonth = (currentQ - 1) * 3  // 0-indexed
-  const qStart = new Date(y, qStartMonth, 1)
-  const qStartStr = qStart.toISOString().split('T')[0]
+  const prevY = y - 1
 
-  // This month
-  const thisMonthStr = `${y}-${String(m + 1).padStart(2, '0')}`
-
-  // Last month
+  // 先月: 前月の年
   const lm = m === 0 ? 11 : m - 1
   const ly = m === 0 ? y - 1 : y
   const lastMonthStr = `${ly}-${String(lm + 1).padStart(2, '0')}`
+  const thisMonthStr = `${y}-${String(m + 1).padStart(2, '0')}`
 
   let thisMonthYomi = 0, thisMonthActual = 0, lastMonthActual = 0, quarterActual = 0, fyActual = 0
 
   customers.forEach(c => {
-    const amt = Number(c.dealAmount) || 0
-    if (!amt) return
-    const updDate = c.updatedAt ? c.updatedAt.slice(0, 10) : ''
-    const updMonth = updDate.slice(0, 7) // YYYY-MM
-    const isWon = c.status === '成約'
-
-    // ヨミ: active pipeline with forecast A or B
+    // ヨミ: 商談中・提案済でforecast A/B（dealAmountベース）
     if ((c.status === '商談中' || c.status === '提案済') && (c.forecast === 'A' || c.forecast === 'B')) {
-      thisMonthYomi += amt
+      thisMonthYomi += Number(c.dealAmount) || 0
     }
-    // 今月実績: won this month
-    if (isWon && updMonth === thisMonthStr) thisMonthActual += amt
-    // 先月実績: won last month
-    if (isWon && updMonth === lastMonthStr) lastMonthActual += amt
-    // 今Q: won since quarter start
-    if (isWon && updDate >= qStartStr) quarterActual += amt
-    // 今年度: won since fiscal year start
-    if (isWon && updDate >= fyStartStr) fyActual += amt
+
+    // annualSalesがある場合: 年次データから集計
+    if (c.annualSales) {
+      // 今年度（カレンダー年 y）
+      fyActual += getAnnualSales(c, y)
+      // 先月が前年12月なら前年データ、それ以外は今年（月次不明のため0）
+      // ※月次・四半期は年次データでは正確に出せないため0とする
+    } else {
+      // 旧来のdealAmount/updatedAt方式
+      const amt = Number(c.dealAmount) || 0
+      if (!amt) return
+      const updDate = c.updatedAt ? c.updatedAt.slice(0, 10) : ''
+      const updMonth = updDate.slice(0, 7)
+      const isWon = c.status === '成約'
+      if (isWon && updMonth === thisMonthStr) thisMonthActual += amt
+      if (isWon && updMonth === lastMonthStr) lastMonthActual += amt
+      const qStartMonth = ((currentQ - 1) * 3)
+      const qStartStr = `${y}-${String(qStartMonth + 1).padStart(2, '0')}-01`
+      if (isWon && updDate >= qStartStr) quarterActual += amt
+      if (isWon && updDate >= `${y}-01-01`) fyActual += amt
+    }
   })
 
+  // 先月実績: 前年12月は前年annualSales合計 / 12 の近似 → ここでは省略
+  // 先月がQ内なら四半期にも加算（月次不明のため近似）
   return { thisMonthYomi, thisMonthActual, lastMonthActual, quarterActual, fyActual, thisMonthStr, lastMonthStr }
 }
 
@@ -284,11 +323,20 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
     } catch { return {} }
   }, [])
 
-  // 年間売上TOP10のIDセット（dealAmount上位10社）
+  // 年間売上TOP10のIDセット（昨年度monthlySales合計上位10社）
   const top10Set = useMemo(() => {
+    const prevYear = new Date().getFullYear() - 1
+    function lastYearSales(c) {
+      if (c.monthlySales && Object.keys(c.monthlySales).length > 0) {
+        return Object.entries(c.monthlySales)
+          .filter(([ym]) => ym.startsWith(String(prevYear)))
+          .reduce((sum, [, v]) => sum + Number(v), 0) / 10000
+      }
+      return Number(c.dealAmount) || 0
+    }
     const sorted = [...customers]
-      .filter(c => Number(c.dealAmount) > 0)
-      .sort((a, b) => Number(b.dealAmount) - Number(a.dealAmount))
+      .filter(c => lastYearSales(c) > 0)
+      .sort((a, b) => lastYearSales(b) - lastYearSales(a))
     return new Set(sorted.slice(0, 10).map(c => c.id))
   }, [customers])
 
@@ -322,13 +370,14 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
     if (actionDateFrom) list = list.filter(c => c.nextAction?.date && c.nextAction.date >= actionDateFrom)
     if (actionDateTo) list = list.filter(c => c.nextAction?.date && c.nextAction.date <= actionDateTo)
     // グロースフラグフィルター
-    if (growthFilter) list = list.filter(c => getGrowthFlag(c, yomiMap) === growthFilter)
+    if (growthFilter) list = list.filter(c => getGrowthFlag(c) === growthFilter)
 
     list = [...list].sort((a, b) => {
       let aVal = a[sortKey] ?? ''
       let bVal = b[sortKey] ?? ''
       if (sortKey === 'nextActionDate') { aVal = a.nextAction?.date || ''; bVal = b.nextAction?.date || '' }
       if (sortKey === 'dealAmount') { aVal = Number(aVal)||0; bVal = Number(bVal)||0 }
+      if (sortKey === 'totalSales') { aVal = getTotalSales(a); bVal = getTotalSales(b) }
       if (sortKey === 'yomiGap') {
         aVal = Math.abs((yomiMap[a.id] ?? 0) - (Number(a.dealAmount) || 0))
         bVal = Math.abs((yomiMap[b.id] ?? 0) - (Number(b.dealAmount) || 0))
@@ -440,15 +489,15 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
       <div className="card p-3 space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-gray-500 flex-shrink-0">担当者</span>
-          {allReps.length > 8 && (
-            <input
-              type="text"
-              value={repSearch}
-              onChange={e => setRepSearch(e.target.value)}
-              placeholder="名前で絞り込み..."
-              className="text-xs border border-gray-200 rounded-lg px-2 py-1 w-36 focus:outline-none focus:border-blue-400"
-            />
-          )}
+          <select
+            value={selectedRep}
+            onChange={e => { setSelectedRep(e.target.value); setCurrentPage(1); setSelected(new Set()) }}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-400 bg-white flex-shrink-0"
+          >
+            {allReps.map(rep => (
+              <option key={rep} value={rep}>{rep}</option>
+            ))}
+          </select>
           {selectedRep !== '全体' && (
             <button onClick={() => { setSelectedRep('全体'); setCurrentPage(1); setSelected(new Set()) }}
               className="text-xs text-gray-400 hover:text-gray-600 ml-auto flex-shrink-0">
@@ -456,33 +505,13 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
             </button>
           )}
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-          {allReps.filter(r => r === '全体' || !repSearch || r.includes(repSearch)).map((rep) => {
-            const color = rep === '全体' ? '#6b7280' : REP_COLORS[(allReps.indexOf(rep) - 1) % REP_COLORS.length]
-            const isSelected = selectedRep === rep
-            return (
-              <button key={rep}
-                onClick={() => { setSelectedRep(rep); setCurrentPage(1); setSelected(new Set()) }}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                  isSelected ? 'text-white border-transparent shadow-sm' : 'text-gray-600 bg-white border-gray-200 hover:border-gray-300'
-                }`}
-                style={isSelected ? { backgroundColor: color } : {}}>
-                {rep !== '全体' && (
-                  <span className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.6)' : color }} />
-                )}
-                {rep === '全体' ? '🌐 全体' : rep}
-              </button>
-            )
-          })}
-        </div>
       </div>
 
       {/* 期間フィルター */}
       <div className="card p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs font-medium text-gray-500 flex-shrink-0">期間</span>
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto">
             {PERIOD_OPTIONS.map(opt => (
               <button key={opt.key} onClick={() => {
                   setPeriod(opt.key)
@@ -491,7 +520,7 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
                   if (opt.key === 'Q') { setClQtr(Math.ceil((t.getMonth() + 1) / 3)); setClQtrYear(t.getFullYear()) }
                   else if (opt.key === '年度') setClYear(t.getFullYear())
                 }}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                className={`flex-shrink-0 whitespace-nowrap px-3 py-1 rounded text-xs font-medium transition-all ${
                   period === opt.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}>
                 {opt.label}
@@ -583,10 +612,10 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
 
         {/* グロースフラグ フィルター */}
         <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-100">
-          <span className="text-xs text-gray-400 font-medium">前月・前Q比</span>
+          <span className="text-xs text-gray-400 font-medium">前年比</span>
           {GROWTH_FLAGS.map(f => {
             const count = f.key
-              ? customers.filter(c => getGrowthFlag(c, yomiMap) === f.key).length
+              ? customers.filter(c => getGrowthFlag(c) === f.key).length
               : customers.length
             const isActive = growthFilter === f.key
             const colorCls = f.key === 'growth'
@@ -709,6 +738,9 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
                     <th className="table-header text-right cursor-pointer hover:bg-gray-100 select-none" onClick={() => handleSort('dealAmount')}>
                       売上（万円）<SortIcon col="dealAmount" />
                     </th>
+                    <th className="table-header text-right cursor-pointer hover:bg-gray-100 select-none" onClick={() => handleSort('totalSales')}>
+                      お取引総額<SortIcon col="totalSales" />
+                    </th>
                     <th className="table-header text-right cursor-pointer hover:bg-gray-100 select-none" onClick={() => handleSort('yomiGap')}>
                       ヨミ / 乖離<SortIcon col="yomiGap" />
                     </th>
@@ -748,10 +780,10 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
                             {top10Set.has(c.id) && (
                               <span className="text-xs bg-amber-50 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap leading-tight">🏅 TOP10</span>
                             )}
-                            {getGrowthFlag(c, yomiMap) === 'growth' && (
+                            {getGrowthFlag(c) === 'growth' && (
                               <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-300 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap leading-tight">📈 伸び大</span>
                             )}
-                            {getGrowthFlag(c, yomiMap) === 'decline' && (
+                            {getGrowthFlag(c) === 'decline' && (
                               <span className="text-xs bg-red-50 text-red-600 border border-red-300 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap leading-tight">📉 減少大</span>
                             )}
                           </div>
@@ -778,6 +810,17 @@ export default function CustomerList({ customers, onSelectCustomer, onAddCustome
                               <span className="text-xs font-normal text-gray-400 ml-0.5">万</span>
                             </span>
                           ) : <span className="text-gray-300 text-sm">—</span>}
+                        </td>
+                        <td className="table-cell text-right" onClick={() => onSelectCustomer(c.id)}>
+                          {(() => {
+                            const total = getTotalSales(c)
+                            return total > 0 ? (
+                              <span className="text-sm font-semibold text-indigo-700">
+                                {Math.round(total).toLocaleString()}
+                                <span className="text-xs font-normal text-gray-400 ml-0.5">万</span>
+                              </span>
+                            ) : <span className="text-gray-300 text-sm">—</span>
+                          })()}
                         </td>
                         <td className="table-cell text-right" onClick={() => onSelectCustomer(c.id)}>
                           {(() => {

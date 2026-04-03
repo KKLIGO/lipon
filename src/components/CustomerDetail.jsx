@@ -76,7 +76,12 @@ export default function CustomerDetail({
   const overdueDays = isOverdue ? Math.abs(days) : 0
 
   function handleSaveAction(data) { onSetNextAction(customer.id, data); setShowActionForm(false) }
-  function handleAddHistory(data) { onAddHistory(customer.id, data); setShowHistoryForm(false) }
+  function handleAddHistory(data) {
+    const { nextAction, ...historyData } = data
+    onAddHistory(customer.id, historyData)
+    if (nextAction && nextAction.date) onSetNextAction(customer.id, nextAction)
+    setShowHistoryForm(false)
+  }
   function handleUpdate(data) { onUpdate(customer.id, data); setShowEditForm(false) }
 
   const hasCompanyInfo = customer.website || customer.address || customer.fiscalYearEnd ||
@@ -87,10 +92,10 @@ export default function CustomerDetail({
     <div className="space-y-5">
       {/* Back + header */}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <button onClick={onBack} className="btn-secondary px-3 py-2 mt-0.5">← 一覧へ</button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{customer.companyName}</h1>
+        <div className="flex items-start gap-3 min-w-0">
+          <button onClick={onBack} className="btn-secondary px-2.5 py-1.5 mt-0.5 text-sm whitespace-nowrap flex-shrink-0 hidden sm:block">← 一覧</button>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight">{customer.companyName}</h1>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               <StatusBadge status={customer.status} />
               {customer.industry && <span className="text-sm text-gray-500">{customer.industry}</span>}
@@ -108,9 +113,12 @@ export default function CustomerDetail({
           </div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <button onClick={() => setShowEditForm(true)} className="btn-secondary text-sm px-3 py-1.5">✏️ 編集</button>
+          <button onClick={() => setShowEditForm(true)} className="btn-secondary text-sm px-2.5 py-1.5">
+            <span className="hidden sm:inline">✏️ 編集</span>
+            <span className="sm:hidden">✏️</span>
+          </button>
           <button onClick={() => { if (window.confirm(`「${customer.companyName}」を削除しますか？`)) onDelete(customer.id) }}
-            className="btn-danger text-sm px-3 py-1.5">🗑️</button>
+            className="btn-danger text-sm px-2.5 py-1.5">🗑️</button>
         </div>
       </div>
 
@@ -314,6 +322,46 @@ export default function CustomerDetail({
               )}
             </div>
           </div>
+
+          {/* 年次売上推移グラフ（monthlySalesを年集計） */}
+          {customer.monthlySales && Object.keys(customer.monthlySales).length > 0 && (() => {
+            const yearMap = {}
+            Object.entries(customer.monthlySales).forEach(([ym, v]) => {
+              const y = ym.slice(0, 4)
+              yearMap[y] = (yearMap[y] || 0) + Number(v)
+            })
+            const entries = Object.entries(yearMap).sort(([a],[b]) => a.localeCompare(b))
+            const values = entries.map(([,v]) => Number(v))
+            const maxVal = Math.max(...values)
+            const total = values.reduce((s,v) => s+v, 0)
+            return (
+              <div className="card p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-semibold text-gray-900">📈 年次売上推移</h2>
+                  <div className="flex gap-4 text-xs text-gray-500">
+                    <span>累計 <span className="font-bold text-gray-800">{(total/10000).toLocaleString(undefined,{maximumFractionDigits:1})}万円</span></span>
+                  </div>
+                </div>
+                <div className="flex items-end gap-2 h-24">
+                  {entries.map(([year, val], i) => {
+                    const pct = maxVal > 0 ? (Number(val) / maxVal) * 100 : 0
+                    const prev = i > 0 ? values[i-1] : null
+                    const trend = prev != null ? (Number(val) > prev ? 'up' : Number(val) < prev ? 'down' : 'flat') : 'flat'
+                    const color = trend === 'up' ? '#10b981' : trend === 'down' ? '#ef4444' : '#3b82f6'
+                    return (
+                      <div key={year} className="flex-1 flex flex-col items-center gap-1 group relative">
+                        <div className="text-xs font-semibold text-gray-700"
+                          style={{fontSize:'10px'}}>{(Number(val)/10000).toLocaleString(undefined,{maximumFractionDigits:0})}万</div>
+                        <div className="w-full rounded-t transition-all duration-300 min-h-[2px]"
+                          style={{ height: `${Math.max(pct * 0.6, 2)}%`, backgroundColor: color, opacity: 0.8 }} />
+                        <div className="text-gray-500 font-medium" style={{fontSize:'10px'}}>{year}年</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* 月次売上推移グラフ */}
           {customer.monthlySales && Object.keys(customer.monthlySales).length > 0 && (() => {

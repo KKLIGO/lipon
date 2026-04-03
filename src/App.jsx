@@ -159,24 +159,24 @@ export default function App() {
           >
             ☰
           </button>
-          <h2 className="font-semibold text-gray-700 text-sm lg:text-base">
-            {page === 'dashboard' && 'ダッシュボード'}
-            {page === 'customers' && '顧客一覧'}
-            {page === 'detail' && (selectedCustomer?.companyName || '顧客詳細')}
-            {page === 'actions' && '次回アクション管理'}
-            {page === 'yomi' && '📋 ヨミ管理'}
-          </h2>
-          {page === 'detail' && (
-            <div className="flex items-center gap-1 text-sm text-gray-400 ml-1">
+          {page === 'detail' ? (
+            <div className="flex items-center gap-1 text-sm text-gray-400 min-w-0 flex-1">
               <button
                 onClick={() => handleNavigate('customers')}
-                className="hover:text-blue-600 transition-colors"
+                className="hover:text-blue-600 transition-colors whitespace-nowrap flex-shrink-0"
               >
                 顧客一覧
               </button>
-              <span>/</span>
-              <span className="text-gray-700">{selectedCustomer?.companyName}</span>
+              <span className="flex-shrink-0">/</span>
+              <span className="text-gray-700 font-semibold truncate">{selectedCustomer?.companyName}</span>
             </div>
+          ) : (
+            <h2 className="font-semibold text-gray-700 text-sm lg:text-base">
+              {page === 'dashboard' && 'ダッシュボード'}
+              {page === 'customers' && '顧客一覧'}
+              {page === 'actions' && '次回アクション管理'}
+              {page === 'yomi' && '📋 ヨミ管理'}
+            </h2>
           )}
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-gray-400 hidden sm:block">
