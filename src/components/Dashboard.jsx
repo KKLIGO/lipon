@@ -305,9 +305,9 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
       if (c.status === '成約') map[rep].won++
       if (c.status === '商談中' || c.status === '提案済') map[rep].active++
       if (c.nextAction?.date && c.nextAction.date < todayStr) map[rep].overdue++
-      map[rep].deal += salesInPeriod(c)
+      map[rep].deal += Math.round(salesInPeriod(c))
     })
-    return Object.values(map).sort((a,b) => b.periodActivities - a.periodActivities)
+    return Object.values(map).sort((a,b) => b.deal - a.deal)
   }, [customers, todayStr, fromStr, toStr])
 
   const pipelineData = useMemo(() => {
@@ -512,7 +512,10 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
             <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-6">
               {/* メイン：成約売上 */}
               <div className="flex-1">
-                <div className="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-1">成約売上</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-blue-200">成約売上</div>
+                  <span className="text-xs bg-white/20 text-blue-100 rounded-full px-2 py-0.5">{periodLabel}</span>
+                </div>
                 <div className="text-5xl font-black tracking-tight leading-none">
                   {stats.wonDeal.toLocaleString()}
                   <span className="text-2xl font-bold ml-2 text-blue-200">万円</span>
@@ -526,6 +529,12 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
               </div>
               {/* サブ数値 */}
               <div className="flex gap-4 sm:gap-6">
+                <div className="text-center">
+                  <div className="text-xs text-blue-200 mb-1">売上合計</div>
+                  <div className="text-2xl font-bold">{stats.totalDeal.toLocaleString()}</div>
+                  <div className="text-xs text-blue-300">万円</div>
+                </div>
+                <div className="w-px bg-white/20 hidden sm:block" />
                 <div className="text-center">
                   <div className="text-xs text-blue-200 mb-1">パイプライン</div>
                   <div className="text-2xl font-bold">{stats.pipelineDeal.toLocaleString()}</div>
@@ -666,7 +675,10 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
 
           {selectedRep === '全体' && (
             <div className="card p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4">担当別 売上金額（万円）</h2>
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">
+                担当別 売上金額（万円）
+                <span className="text-xs text-gray-400 font-normal ml-2">{periodLabel}</span>
+              </h2>
               <ResponsiveContainer width="100%" height={Math.max(180, repData.length * 36)}>
                 <BarChart data={repData} layout="vertical" margin={{ top:5, right:60, left:55, bottom:5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
