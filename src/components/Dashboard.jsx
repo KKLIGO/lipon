@@ -220,7 +220,10 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
     const pipelineDeal = fc.filter(c => c.status === '商談中' || c.status === '提案済').reduce((s, c) => s + salesInPeriod(c), 0)
     const forecastAB = fc.filter(c => c.forecast === 'A' || c.forecast === 'B').reduce((s, c) => s + salesInPeriod(c), 0)
     const periodCompanies = fc.filter(c => salesInPeriod(c) > 0).length
-    return { total, active, won, overdue, weekActions, totalDeal: Math.round(totalDeal), wonDeal: Math.round(wonDeal), pipelineDeal: Math.round(pipelineDeal), forecastAB: Math.round(forecastAB), periodCompanies }
+    const leads = fc.filter(c => c.status === 'リード').length
+    const existing = fc.filter(c => c.status === '成約').length
+    const prospect = fc.filter(c => c.status === '見込み').length
+    return { total, active, won, overdue, weekActions, totalDeal: Math.round(totalDeal), wonDeal: Math.round(wonDeal), pipelineDeal: Math.round(pipelineDeal), forecastAB: Math.round(forecastAB), periodCompanies, leads, existing, prospect }
   }, [fc, todayStr, weekEndStr, fromStr, toStr])
 
   // Period-filtered activity KPIs
@@ -520,10 +523,12 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
                   {stats.totalDeal.toLocaleString()}
                   <span className="text-2xl font-bold ml-2 text-blue-200">万円</span>
                 </div>
-                <div className="flex items-center gap-3 mt-2 text-sm text-blue-100">
-                  <span>📊 {stats.periodCompanies}社取引</span>
+                <div className="flex items-center gap-3 mt-2 text-sm text-blue-100 flex-wrap">
+                  <span>🎯 リード {stats.leads}社</span>
                   <span className="opacity-50">|</span>
-                  <span>👥 {stats.total}社</span>
+                  <span>💡 見込み {stats.prospect}社</span>
+                  <span className="opacity-50">|</span>
+                  <span>🏆 既存 {stats.existing}社</span>
                   {selectedRep !== '全体' && <span className="bg-white/20 rounded-full px-2 py-0.5 text-xs">{selectedRep}</span>}
                 </div>
               </div>
@@ -539,14 +544,17 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiCard icon="👥" label="顧客数" value={stats.total} color="blue"
-              onClick={onNavigateToList ? () => onNavigateToList({ status: 'すべて', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
-            <KpiCard icon="🔥" label="商談中+提案済" value={stats.active} color="purple"
-              onClick={onNavigateToList ? () => onNavigateToList({ status: '商談中', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
-            <KpiCard icon="🏆" label="成約件数" value={stats.won} color="green"
+            <KpiCard icon="🎯" label="リード数" value={stats.leads} color="yellow"
+              sub={`全体の${stats.total > 0 ? Math.round(stats.leads/stats.total*100) : 0}%`}
+              onClick={onNavigateToList ? () => onNavigateToList({ status: 'リード', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
+            <KpiCard icon="💡" label="見込み数" value={stats.prospect} color="purple"
+              sub={`全体の${stats.total > 0 ? Math.round(stats.prospect/stats.total*100) : 0}%`}
+              onClick={onNavigateToList ? () => onNavigateToList({ status: '見込み', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
+            <KpiCard icon="🏆" label="既存顧客数" value={stats.existing} color="green"
+              sub={`全体の${stats.total > 0 ? Math.round(stats.existing/stats.total*100) : 0}%`}
               onClick={onNavigateToList ? () => onNavigateToList({ status: '成約', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
-            <KpiCard icon="💰" label="売上合計" value={stats.totalDeal} color="yellow"
-              onClick={onNavigateToList ? () => onNavigateToList({ status: '成約', rep: selectedRep === '全体' ? '' : selectedRep, sort: 'dealAmount' }) : undefined} />
+            <KpiCard icon="💰" label="期間売上" value={`${stats.totalDeal.toLocaleString()}万円`} color="blue"
+              sub={periodLabel} />
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
