@@ -66,6 +66,147 @@ function KpiCard({ icon, label, value, sub, color='blue', alert=false, onClick }
   )
 }
 
+// ===== Activity Heatmap (GitHub-style) =====
+function ActivityHeatmap({ data, repColor }) {
+  const [tooltip, setTooltip] = React.useState(null)
+
+  // 今日から遡って52週 + 端数（日曜始まり）を生成
+  const weeks = React.useMemo(() => {
+    const today = new Date(); today.setHours(0,0,0,0)
+    // 今日の曜日（0=日〜6=土）
+    const todayDow = today.getDay()
+    // 今日の週の土曜日まで埋める（右端を土曜で揃える）
+    const endDate = new Date(today)
+    endDate.setDate(today.getDate() + (6 - todayDow))
+
+    // 53週分（最大371日）遡って開始日を算出
+    const startDate = new Date(endDate)
+    startDate.setDate(endDate.getDate() - 52 * 7 - 6)
+    // 日曜始まりに揃える
+    const startDow = startDate.getDay()
+    startDate.setDate(startDate.getDate() - startDow)
+
+    const weeksArr = []
+    const cur = new Date(startDate)
+    while (cur <= endDate) {
+      const week = []
+      for (let d = 0; d < 7; d++) {
+        const dateStr = cur.toISOString().split('T')[0]
+        const isFuture = cur > today
+        week.push({ date: dateStr, count: isFuture ? null : (data[dateStr] || 0), isFuture })
+        cur.setDate(cur.getDate() + 1)
+      }
+      weeksArr.push(week)
+    }
+    return weeksArr
+  }, [data])
+
+  // 月ラベル
+  const monthLabels = React.useMemo(() => {
+    const labels = []
+    weeks.forEach((week, wi) => {
+      const firstDay = week[0]
+      if (!firstDay) return
+      const d = new Date(firstDay.date)
+      // その週の最初の日が月初（1〜7日）なら月ラベルを表示
+      if (d.getDate() <= 7) {
+        labels.push({ wi, label: `${d.getMonth()+1}月` })
+      }
+    })
+    return labels
+  }, [weeks])
+
+  const maxCount = React.useMemo(() => Math.max(...Object.values(data), 1), [data])
+
+  function getCellColor(count, isFuture) {
+    if (isFuture || count === null) return '#f1f5f9'
+    if (count === 0) return '#f1f5f9'
+    const intensity = Math.min(count / Math.max(maxCount * 0.25, 1), 1)
+    // 青系グラデーション
+    const base = repColor || '#3b82f6'
+    const r = parseInt(base.slice(1,3),16)
+    const g = parseInt(base.slice(3,5),16)
+    const b = parseInt(base.slice(5,7),16)
+    const minAlpha = 0.15, maxAlpha = 1.0
+    const alpha = minAlpha + (maxAlpha - minAlpha) * intensity
+    return `rgba(${r},${g},${b},${alpha})`
+  }
+
+  const DAYS = ['日','月','火','水','木','金','土']
+  const CELL = 13, GAP = 2
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <div className="inline-block min-w-full">
+        {/* 月ラベル */}
+        <div className="flex mb-1 ml-7">
+          {weeks.map((_, wi) => {
+            const lbl = monthLabels.find(m => m.wi === wi)
+            return (
+              <div key={wi} style={{ width: CELL+GAP, flexShrink:0 }}
+                className="text-[9px] text-gray-400 font-medium">
+                {lbl ? lbl.label : ''}
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex gap-0">
+          {/* 曜日ラベル */}
+          <div className="flex flex-col mr-1" style={{ gap: GAP }}>
+            {DAYS.map((d, i) => (
+              <div key={d} style={{ height:CELL, fontSize:9, lineHeight:CELL+'px' }}
+                className={`text-gray-400 w-5 text-right pr-1 ${i % 2 === 0 ? 'opacity-0' : ''}`}>
+                {d}
+              </div>
+            ))}
+          </div>
+          {/* セル */}
+          {weeks.map((week, wi) => (
+            <div key={wi} className="flex flex-col" style={{ gap: GAP, marginRight: GAP }}>
+              {week.map((cell, di) => (
+                <div
+                  key={di}
+                  style={{
+                    width: CELL, height: CELL,
+                    borderRadius: 2,
+                    backgroundColor: getCellColor(cell.count, cell.isFuture),
+                    flexShrink: 0,
+                    cursor: cell.count > 0 ? 'pointer' : 'default',
+                    border: tooltip?.date === cell.date ? '1.5px solid #64748b' : '1.5px solid transparent',
+                  }}
+                  onMouseEnter={e => {
+                    if (!cell.isFuture) setTooltip({ date: cell.date, count: cell.count, x: e.clientX, y: e.clientY })
+                  }}
+                  onMouseLeave={() => setTooltip(null)}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+        {/* 凡例 */}
+        <div className="flex items-center gap-1.5 mt-2 ml-7">
+          <span className="text-[10px] text-gray-400">少</span>
+          {[0, 0.25, 0.5, 0.75, 1].map(v => (
+            <div key={v} style={{
+              width:11, height:11, borderRadius:2,
+              backgroundColor: v === 0 ? '#f1f5f9' : getCellColor(Math.round(maxCount * v), false)
+            }} />
+          ))}
+          <span className="text-[10px] text-gray-400">多</span>
+        </div>
+      </div>
+      {/* ツールチップ */}
+      {tooltip && (
+        <div className="fixed z-50 pointer-events-none bg-gray-800 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg"
+          style={{ left: tooltip.x + 10, top: tooltip.y - 36 }}>
+          <div className="font-semibold">{tooltip.date}</div>
+          <div>{tooltip.count}件の活動</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpMonitor, onNavigateToList }) {
   const [selectedRep, setSelectedRep] = useState('全体')
   const [activeView, setActiveView] = useState('summary')
@@ -374,6 +515,22 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
 
   // Filtered reps for search
   const filteredReps = allReps.filter(r => r === '全体' || r.includes(repSearch))
+
+  // ヒートマップ用：過去365日の日別活動件数
+  const heatmapData = useMemo(() => {
+    const map = {}
+    const oneYearAgo = new Date(today)
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    const startStr = oneYearAgo.toISOString().split('T')[0]
+    fc.forEach(c => {
+      (c.history || []).forEach(h => {
+        if (h.date && h.date >= startStr && h.date <= todayStr) {
+          map[h.date] = (map[h.date] || 0) + 1
+        }
+      })
+    })
+    return map
+  }, [fc, todayStr])
 
   return (
     <div className="space-y-4">
@@ -717,6 +874,21 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
       {/* ===== ACTIVITY ===== */}
       {activeView === 'activity' && (
         <div className="space-y-5">
+
+          {/* ヒートマップ */}
+          <div className="card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-900">
+                📅 活動ヒートマップ
+                <span className="text-xs text-gray-400 font-normal ml-2">過去1年間・日別活動件数</span>
+              </h2>
+              <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-2 py-0.5">
+                {Object.keys(heatmapData).length}日間に活動あり
+              </span>
+            </div>
+            <ActivityHeatmap data={heatmapData} repColor={selectedRepColor} />
+          </div>
+
           <div className="card p-5">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">
               活動件数トレンド
