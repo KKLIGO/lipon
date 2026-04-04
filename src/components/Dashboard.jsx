@@ -370,8 +370,17 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
   // Period-filtered activity KPIs
   const periodStats = useMemo(() => {
     let totalAct = 0
-    fc.forEach(c => { totalAct += historyInPeriod(c.history).length })
-    return { totalAct }
+    let periodLeads = 0, periodProspect = 0, periodExisting = 0
+    fc.forEach(c => {
+      const acts = historyInPeriod(c.history)
+      totalAct += acts.length
+      if (acts.length > 0) {
+        if (c.status === 'リード') periodLeads++
+        else if (c.status === '見込み') periodProspect++
+        else if (c.status === '成約') periodExisting++
+      }
+    })
+    return { totalAct, periodLeads, periodProspect, periodExisting }
   }, [fc, fromStr, toStr])
 
   const statusData = useMemo(() => {
@@ -681,11 +690,11 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
                   <span className="text-2xl font-bold ml-2 text-blue-200">万円</span>
                 </div>
                 <div className="flex items-center gap-3 mt-2 text-sm text-blue-100 flex-wrap">
-                  <span>🎯 リード {stats.leads}社</span>
+                  <span>🎯 リード {periodStats.periodLeads}社</span>
                   <span className="opacity-50">|</span>
-                  <span>💡 見込み {stats.prospect}社</span>
+                  <span>💡 見込み {periodStats.periodProspect}社</span>
                   <span className="opacity-50">|</span>
-                  <span>🏆 既存 {stats.existing}社</span>
+                  <span>🏆 既存 {periodStats.periodExisting}社</span>
                   {selectedRep !== '全体' && <span className="bg-white/20 rounded-full px-2 py-0.5 text-xs">{selectedRep}</span>}
                 </div>
               </div>
@@ -701,14 +710,14 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiCard icon="🎯" label="リード数" value={stats.leads} color="yellow"
-              sub={`全体の${stats.total > 0 ? Math.round(stats.leads/stats.total*100) : 0}%`}
+            <KpiCard icon="🎯" label="リード数" value={periodStats.periodLeads} color="yellow"
+              sub={`${periodLabel}・活動あり / 全${stats.leads}社`}
               onClick={onNavigateToList ? () => onNavigateToList({ status: 'リード', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
-            <KpiCard icon="💡" label="見込み数" value={stats.prospect} color="purple"
-              sub={`全体の${stats.total > 0 ? Math.round(stats.prospect/stats.total*100) : 0}%`}
+            <KpiCard icon="💡" label="見込み数" value={periodStats.periodProspect} color="purple"
+              sub={`${periodLabel}・活動あり / 全${stats.prospect}社`}
               onClick={onNavigateToList ? () => onNavigateToList({ status: '見込み', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
-            <KpiCard icon="🏆" label="既存顧客数" value={stats.existing} color="green"
-              sub={`全体の${stats.total > 0 ? Math.round(stats.existing/stats.total*100) : 0}%`}
+            <KpiCard icon="🏆" label="既存顧客数" value={periodStats.periodExisting} color="green"
+              sub={`${periodLabel}・活動あり / 全${stats.existing}社`}
               onClick={onNavigateToList ? () => onNavigateToList({ status: '成約', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
             <KpiCard icon="💰" label="期間売上" value={`${stats.totalDeal.toLocaleString()}万円`} color="blue"
               sub={periodLabel} />
