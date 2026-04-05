@@ -219,6 +219,7 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1)
   const [selectedMonthYear, setSelectedMonthYear] = useState(() => new Date().getFullYear())
   const [repSearch, setRepSearch] = useState('')
+  const [activityModal, setActivityModal] = useState(false)
 
   const today = new Date()
   const todayStr = today.toISOString().split('T')[0]
@@ -525,6 +526,17 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
   // Filtered reps for search
   const filteredReps = allReps.filter(r => r === '全体' || r.includes(repSearch))
 
+  // 活動詳細モーダル用：期間内の全活動リスト（顧客名付き）
+  const activityDetails = useMemo(() => {
+    const list = []
+    fc.forEach(c => {
+      historyInPeriod(c.history).forEach(h => {
+        list.push({ ...h, companyName: c.companyName, customerId: c.id, assignedTo: c.assignedTo })
+      })
+    })
+    return list.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  }, [fc, fromStr, toStr])
+
   // ヒートマップ用：過去365日の日別活動件数
   const heatmapData = useMemo(() => {
     const map = {}
@@ -543,6 +555,45 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
 
   return (
     <div className="space-y-4">
+
+      {/* ===== 活動詳細モーダル ===== */}
+      {activityModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setActivityModal(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">📋 活動履歴一覧</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{periodLabel}・{activityDetails.length}件</p>
+              </div>
+              <button onClick={() => setActivityModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">✕</button>
+            </div>
+            <div className="overflow-y-auto flex-1 divide-y divide-gray-50">
+              {activityDetails.length === 0 ? (
+                <div className="py-12 text-center text-gray-400 text-sm">期間内の活動がありません</div>
+              ) : activityDetails.map((h, i) => (
+                <div key={h.id || i} className="px-5 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => { setActivityModal(false); onSelectCustomer && onSelectCustomer(h.customerId); }}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">{h.type || 'その他'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-gray-800 truncate">{h.companyName}</span>
+                        {h.assignedTo && <span className="text-xs text-gray-400">{h.assignedTo}</span>}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{h.content}</p>
+                    </div>
+                    <div className="flex-shrink-0 text-xs text-gray-400 whitespace-nowrap">{h.date}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
@@ -723,13 +774,11 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
               sub={periodLabel} />
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiCard icon="📋" label={`活動件数`} sub={periodLabel} value={periodStats.totalAct} color="blue" />
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <KpiCard icon="📋" label="活動件数" sub={periodLabel} value={periodStats.totalAct} color="blue"
+              onClick={() => setActivityModal(true)} />
             <KpiCard icon="📅" label="今週アクション" value={stats.weekActions} color="purple" />
             <KpiCard icon="⚠️" label="期限切れ" value={stats.overdue} color="red" alert />
-            <KpiCard icon="📊" label="1社平均活動"
-              value={stats.total > 0 ? (fc.reduce((s,c) => s+(c.history?.length||0),0)/stats.total).toFixed(1) : '0'}
-              color="blue" />
           </div>
 
 
