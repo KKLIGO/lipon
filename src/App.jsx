@@ -94,6 +94,7 @@ export default function App() {
     setNextAction,
     clearNextAction,
     getCustomer,
+    updateRepMonthlySales,
   } = useCustomers()
 
   const hpMonitor = useHPMonitor()
@@ -237,6 +238,7 @@ export default function App() {
             <YomiManager
               customers={customers}
               currentUser={currentUser}
+              onUpdateRepSales={updateRepMonthlySales}
             />
           )}
         </main>

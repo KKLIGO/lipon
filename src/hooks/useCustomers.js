@@ -84,6 +84,21 @@ export function useCustomers() {
     return customers.find(c => c.id === id)
   }, [customers])
 
+  // 受注金額（repMonthlySales）を一括更新: repSalesMap = {customerId: amountInYen or 0}
+  const updateRepMonthlySales = useCallback((monthStr, repSalesMap) => {
+    persist(customers.map(c => {
+      if (!(c.id in repSalesMap)) return c
+      const amount = repSalesMap[c.id]
+      const current = c.repMonthlySales || {}
+      if (!amount) {
+        const updated = { ...current }
+        delete updated[monthStr]
+        return { ...c, repMonthlySales: updated }
+      }
+      return { ...c, repMonthlySales: { ...current, [monthStr]: amount } }
+    }))
+  }, [customers, persist])
+
   return {
     customers,
     addCustomer,
@@ -96,5 +111,6 @@ export function useCustomers() {
     setNextAction,
     clearNextAction,
     getCustomer,
+    updateRepMonthlySales,
   }
 }

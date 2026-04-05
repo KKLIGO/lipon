@@ -47,22 +47,38 @@ export function useYomiManager() {
   // Load working entries from latest snapshot of this month (or blank)
   const initWorkingEntries = useCallback((monthStr, customers, assignedTo = null) => {
     const snaps = load()[monthStr]?.snapshots || []
+    const list = assignedTo ? customers.filter(c => c.assignedTo === assignedTo) : customers
+
+    let map = {}
     if (snaps.length > 0) {
       const latest = snaps[snaps.length - 1]
-      const map = {}
-      latest.entries.forEach(e => { map[e.customerId] = { yomiAmount: e.yomiAmount, yomiRank: e.yomiRank, note: e.note } })
-      setWorkingEntries(map)
+      latest.entries.forEach(e => {
+        map[e.customerId] = { yomiAmount: e.yomiAmount, yomiRank: e.yomiRank, note: e.note, juchuAmount: e.juchuAmount || '' }
+      })
     } else {
-      // Initialize from customer data
-      const list = assignedTo ? customers.filter(c => c.assignedTo === assignedTo) : customers
-      const map = {}
       list.forEach(c => {
-        if (c.status !== '失注' && c.status !== '成約') {
-          map[c.id] = { yomiAmount: c.dealAmount ? String(c.dealAmount) : '', yomiRank: c.forecast || '', note: '' }
+        if (c.status !== '失注') {
+          map[c.id] = {
+            yomiAmount: c.status !== '成約' ? (c.dealAmount ? String(c.dealAmount) : '') : '',
+            yomiRank: c.forecast || '',
+            note: '',
+            juchuAmount: '',
+          }
         }
       })
-      setWorkingEntries(map)
     }
+
+    // repMonthlySales（受注金額）は常に顧客データから上書き（永続データが優先）
+    list.forEach(c => {
+      const rep = c.repMonthlySales?.[monthStr]
+      if (map[c.id]) {
+        map[c.id].juchuAmount = rep ? String(Math.round(rep / 10000)) : (map[c.id].juchuAmount || '')
+      } else if (rep) {
+        map[c.id] = { yomiAmount: '', yomiRank: '', note: '', juchuAmount: String(Math.round(rep / 10000)) }
+      }
+    })
+
+    setWorkingEntries(map)
     setIsDirty(false)
   }, [])
 
@@ -92,7 +108,8 @@ export function useYomiManager() {
       const e = workingEntries[c.id]
       if (!e) return
       const amt = Number(e.yomiAmount) || 0
-      if (amt > 0 || e.note) {
+      const juchuAmt = Number(e.juchuAmount) || 0
+      if (amt > 0 || e.note || juchuAmt > 0) {
         entries.push({
           customerId: c.id,
           companyName: c.companyName,
@@ -101,6 +118,7 @@ export function useYomiManager() {
           yomiAmount: amt,
           yomiRank: e.yomiRank || '',
           note: e.note || '',
+          juchuAmount: juchuAmt,
         })
       }
     })

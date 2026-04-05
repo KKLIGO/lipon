@@ -329,25 +329,30 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
     return (history || []).filter(h => h.date && h.date >= fromStr && h.date <= toStr)
   }
 
-  // 期間内売上を計算するヘルパー
+  // 期間内の請求売上（monthlySales: Salesforce Amount_spent CSV）
   function salesInPeriod(c) {
-    // 月次データがある場合はそちらを優先（YYYY-MM キー）
     if (c.monthlySales && Object.keys(c.monthlySales).length > 0) {
       const fromM = fromStr.slice(0, 7)
       const toM = toStr.slice(0, 7)
       return Object.entries(c.monthlySales).reduce((sum, [m, v]) => (m >= fromM && m <= toM ? sum + v : sum), 0) / 10000
     }
-    // 年次データ（annualSales）: その年の全期間（1/1〜12/31）がperiod内に含まれる年のみ合算
     if (c.annualSales && Object.keys(c.annualSales).length > 0) {
       return Object.entries(c.annualSales).reduce((sum, [y, v]) => {
         const yearStart = `${y}-01-01`
         const yearEnd = `${y}-12-31`
-        // 年全体がperiod範囲内に収まる場合のみカウント
         if (yearStart >= fromStr && yearEnd <= toStr) return sum + v
         return sum
       }, 0) / 10000
     }
     return 0
+  }
+
+  // 期間内の受注金額（repMonthlySales: 営業自身が入力した売上）
+  function repSalesInPeriod(c) {
+    if (!c.repMonthlySales || Object.keys(c.repMonthlySales).length === 0) return 0
+    const fromM = fromStr.slice(0, 7)
+    const toM = toStr.slice(0, 7)
+    return Object.entries(c.repMonthlySales).reduce((sum, [m, v]) => (m >= fromM && m <= toM ? sum + v : sum), 0) / 10000
   }
 
   // Snapshot KPIs (一部period対応)
@@ -365,7 +370,9 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
     const leads = fc.filter(c => c.status === 'リード').length
     const existing = fc.filter(c => c.status === '成約').length
     const prospect = fc.filter(c => c.status === '見込み').length
-    return { total, active, won, overdue, weekActions, totalDeal: Math.round(totalDeal), wonDeal: Math.round(wonDeal), pipelineDeal: Math.round(pipelineDeal), forecastAB: Math.round(forecastAB), periodCompanies, leads, existing, prospect }
+    const totalRepSales = Math.round(fc.reduce((s, c) => s + repSalesInPeriod(c), 0))
+    const dealCount = fc.filter(c => c.status === '商談中' || c.status === '提案済').length
+    return { total, active, won, overdue, weekActions, totalDeal: Math.round(totalDeal), wonDeal: Math.round(wonDeal), pipelineDeal: Math.round(pipelineDeal), forecastAB: Math.round(forecastAB), periodCompanies, leads, existing, prospect, totalRepSales, dealCount }
   }, [fc, todayStr, weekEndStr, fromStr, toStr])
 
   // Period-filtered activity KPIs
@@ -383,6 +390,74 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
     })
     return { totalAct, periodLeads, periodProspect, periodExisting }
   }, [fc, fromStr, toStr])
+
+  // パイプライン概要（受注+ABCD）と先月同時点比較
+  const pipelineOverview = useMemo(() => {
+    const currentMonth = todayStr.slice(0, 7)
+    const prevMonthDate = new Date(currentMonth + '-01')
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
+    const prevMonth = prevMonthDate.toISOString().slice(0, 7)
+
+    // ヨミスナップショットから ABCD 金額を取得
+    let yomiSnaps = {}
+    try { yomiSnaps = JSON.parse(localStorage.getItem('crm_yomi_snapshots_v1') || '{}') } catch {}
+
+    function getYomiByRank(monthStr) {
+      const snaps = yomiSnaps[monthStr]?.snapshots || []
+      const result = { A: 0, B: 0, C: 0, D: 0 }
+      if (snaps.length > 0) {
+        const latest = snaps[snaps.length - 1]
+        const entries = selectedRep === '全体' ? latest.entries : latest.entries.filter(e => e.assignedTo === selectedRep)
+        entries.forEach(e => {
+          if (e.yomiRank && result[e.yomiRank] !== undefined) result[e.yomiRank] += e.yomiAmount || 0
+        })
+      } else {
+        // スナップショット未保存の場合は顧客の forecast × dealAmount で近似
+        fc.forEach(c => {
+          if (c.forecast && result[c.forecast] !== undefined && c.status !== '成約' && c.status !== '失注') {
+            result[c.forecast] += Math.round(salesInPeriod(c)) || (Number(c.dealAmount) || 0)
+          }
+        })
+      }
+      return result
+    }
+
+    const current = getYomiByRank(currentMonth)
+    const prev = getYomiByRank(prevMonth)
+
+    // 受注金額（repMonthlySales）
+    const juchuCurrent = Math.round(fc.reduce((s, c) => s + (c.repMonthlySales?.[currentMonth] || 0), 0) / 10000)
+    const juchuPrev = Math.round(fc.reduce((s, c) => s + (c.repMonthlySales?.[prevMonth] || 0), 0) / 10000)
+
+    const totalCurrent = juchuCurrent + current.A + current.B + current.C + current.D
+    const totalPrev = juchuPrev + prev.A + prev.B + prev.C + prev.D
+
+    return { current, prev, juchuCurrent, juchuPrev, totalCurrent, totalPrev, currentMonth, prevMonth }
+  }, [fc, selectedRep, todayStr, fromStr, toStr])
+
+  // 今月 vs 先月同時点の活動件数比較
+  const comparisonStats = useMemo(() => {
+    const today = todayStr
+    const dayOfMonth = parseInt(today.slice(8, 10))
+    const currentMonthStart = todayStr.slice(0, 7) + '-01'
+    const prevMonthDate = new Date(currentMonthStart)
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
+    const prevMonthStr = prevMonthDate.toISOString().slice(0, 7)
+    const prevMonthStart = prevMonthStr + '-01'
+    // 先月の同日（月末超えの場合は月末に丸める）
+    const prevMonthLastDay = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0).getDate()
+    const prevSameDay = prevMonthStr + '-' + String(Math.min(dayOfMonth, prevMonthLastDay)).padStart(2, '0')
+
+    let currentActs = 0, prevActs = 0
+    fc.forEach(c => {
+      (c.history || []).forEach(h => {
+        if (h.date >= currentMonthStart && h.date <= today) currentActs++
+        if (h.date >= prevMonthStart && h.date <= prevSameDay) prevActs++
+      })
+    })
+
+    return { currentActs, prevActs, actsChange: currentActs - prevActs }
+  }, [fc, todayStr])
 
   const statusData = useMemo(() => {
     const counts = {}
@@ -724,42 +799,110 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
       {activeView === 'summary' && (
         <div className="space-y-5">
 
-          {/* ヒーロー売上バナー */}
-          <div className="rounded-2xl p-6 text-white relative overflow-hidden"
+          {/* ① パイプライン概要ヒーロー */}
+          <div className="rounded-2xl p-5 text-white relative overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #1a56db 60%, #7c3aed 100%)' }}>
             <div className="absolute inset-0 opacity-10"
               style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)' }} />
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-6">
-              {/* メイン：期間売上 */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-blue-200">売上合計</div>
-                  <span className="text-xs bg-white/20 text-blue-100 rounded-full px-2 py-0.5">{periodLabel}</span>
-                </div>
-                <div className="text-5xl font-black tracking-tight leading-none">
-                  {stats.totalDeal.toLocaleString()}
-                  <span className="text-2xl font-bold ml-2 text-blue-200">万円</span>
-                </div>
-                <div className="flex items-center gap-3 mt-2 text-sm text-blue-100 flex-wrap">
-                  <span>🎯 リード {periodStats.periodLeads}社</span>
-                  <span className="opacity-50">|</span>
-                  <span>💡 見込み {periodStats.periodProspect}社</span>
-                  <span className="opacity-50">|</span>
-                  <span>🏆 既存 {periodStats.periodExisting}社</span>
-                  {selectedRep !== '全体' && <span className="bg-white/20 rounded-full px-2 py-0.5 text-xs">{selectedRep}</span>}
-                </div>
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-semibold uppercase tracking-widest text-blue-200">売上見込み（ヨミ合計）</span>
+                <span className="text-xs bg-white/20 text-blue-100 rounded-full px-2 py-0.5">今月</span>
+                {selectedRep !== '全体' && <span className="text-xs bg-white/20 text-blue-100 rounded-full px-2 py-0.5">{selectedRep}</span>}
               </div>
-              {/* サブ数値：取引社数 */}
-              <div className="flex gap-4 sm:gap-6">
-                <div className="text-center">
-                  <div className="text-xs text-blue-200 mb-1">取引社数</div>
-                  <div className="text-2xl font-bold">{stats.periodCompanies.toLocaleString()}</div>
-                  <div className="text-xs text-blue-300">社</div>
+
+              <div className="flex flex-col lg:flex-row lg:items-start gap-5">
+                {/* 左：合計＋比較 */}
+                <div className="flex-1">
+                  <div className="text-4xl sm:text-5xl font-black tracking-tight leading-none">
+                    {pipelineOverview.totalCurrent.toLocaleString()}
+                    <span className="text-xl font-bold ml-2 text-blue-200">万円</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-2 text-sm flex-wrap">
+                    {(() => {
+                      const diff = pipelineOverview.totalCurrent - pipelineOverview.totalPrev
+                      return diff !== 0 ? (
+                        <span className={diff > 0 ? 'text-green-300 font-semibold' : 'text-red-300 font-semibold'}>
+                          {diff > 0 ? '▲' : '▼'} 先月比 {Math.abs(diff).toLocaleString()}万円
+                        </span>
+                      ) : <span className="text-blue-300 text-xs">先月比 変化なし</span>
+                    })()}
+                    <span className="text-blue-300 text-xs opacity-70">|</span>
+                    <span className="text-blue-300 text-xs">🧾 請求売上: {stats.totalDeal.toLocaleString()}万円</span>
+                    {stats.totalRepSales > 0 && (
+                      <>
+                        <span className="text-blue-300 text-xs opacity-70">|</span>
+                        <span className="text-blue-300 text-xs">💰 入力売上: {stats.totalRepSales.toLocaleString()}万円</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* 商談件数・活動件数 */}
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    <div className="bg-white/10 rounded-xl px-4 py-2.5">
+                      <div className="text-xs text-blue-200 mb-0.5">商談件数</div>
+                      <div className="text-xl font-bold">{stats.dealCount}<span className="text-xs font-normal ml-1">件</span></div>
+                      <div className="text-xs text-blue-300">商談中+提案済</div>
+                    </div>
+                    <div className="bg-white/10 rounded-xl px-4 py-2.5">
+                      <div className="text-xs text-blue-200 mb-0.5">活動件数（今月）</div>
+                      <div className="text-xl font-bold">
+                        {comparisonStats.currentActs}<span className="text-xs font-normal ml-1">件</span>
+                        {comparisonStats.actsChange !== 0 && (
+                          <span className={`text-sm ml-2 ${comparisonStats.actsChange > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                            {comparisonStats.actsChange > 0 ? '+' : ''}{comparisonStats.actsChange}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-blue-300">先月同時点 {comparisonStats.prevActs}件</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 右：ランク別内訳 */}
+                <div className="flex flex-row lg:flex-col gap-1.5 flex-wrap">
+                  {[
+                    { label: '🏆 受注済', current: pipelineOverview.juchuCurrent, prev: pipelineOverview.juchuPrev, color: '#10b981' },
+                    { label: 'A ほぼ確実', current: pipelineOverview.current.A, prev: pipelineOverview.prev.A, color: '#10b981' },
+                    { label: 'B 見込み', current: pipelineOverview.current.B, prev: pipelineOverview.prev.B, color: '#3b82f6' },
+                    { label: 'C 可能性', current: pipelineOverview.current.C, prev: pipelineOverview.prev.C, color: '#f59e0b' },
+                    { label: 'D 要確認', current: pipelineOverview.current.D, prev: pipelineOverview.prev.D, color: '#94a3b8' },
+                  ].map(r => {
+                    const diff = r.current - r.prev
+                    return (
+                      <div key={r.label} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5 min-w-[180px]">
+                        <span className="text-xs text-blue-200 w-20 flex-shrink-0">{r.label}</span>
+                        <span className="font-bold text-sm text-white flex-1 text-right">
+                          {r.current > 0 ? r.current.toLocaleString() : '—'}<span className="text-xs font-normal text-blue-200 ml-0.5">万</span>
+                        </span>
+                        {diff !== 0 && (
+                          <span className={`text-xs w-14 text-right flex-shrink-0 ${diff > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                            {diff > 0 ? '+' : ''}{diff.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                  <div className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-1.5 min-w-[180px] border border-white/20">
+                    <span className="text-xs font-bold text-white w-20 flex-shrink-0">合計</span>
+                    <span className="font-bold text-sm text-white flex-1 text-right">
+                      {pipelineOverview.totalCurrent.toLocaleString()}<span className="text-xs font-normal text-blue-200 ml-0.5">万</span>
+                    </span>
+                    {(() => {
+                      const diff = pipelineOverview.totalCurrent - pipelineOverview.totalPrev
+                      return diff !== 0 ? (
+                        <span className={`text-xs w-14 text-right flex-shrink-0 font-bold ${diff > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                          {diff > 0 ? '+' : ''}{diff.toLocaleString()}
+                        </span>
+                      ) : null
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* ② KPIカード：ステータス別 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiCard icon="🎯" label="リード数" value={periodStats.periodLeads} color="yellow"
               sub={`${periodLabel}・活動あり / 全${stats.leads}社`}
@@ -770,12 +913,13 @@ export default function Dashboard({ customers, onNavigate, onSelectCustomer, hpM
             <KpiCard icon="🏆" label="既存顧客数" value={periodStats.periodExisting} color="green"
               sub={`${periodLabel}・活動あり / 全${stats.existing}社`}
               onClick={onNavigateToList ? () => onNavigateToList({ status: '成約', rep: selectedRep === '全体' ? '' : selectedRep }) : undefined} />
-            <KpiCard icon="💰" label="期間売上" value={`${stats.totalDeal.toLocaleString()}万円`} color="blue"
-              sub={periodLabel} />
+            <KpiCard icon="🧾" label="請求売上" value={`${stats.totalDeal.toLocaleString()}万円`} color="blue"
+              sub={`${periodLabel} / 入力: ${stats.totalRepSales > 0 ? stats.totalRepSales.toLocaleString() + '万円' : '未入力'}`} />
           </div>
 
+          {/* ③ KPIカード：活動系 */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            <KpiCard icon="📋" label="活動件数" sub={periodLabel} value={periodStats.totalAct} color="blue"
+            <KpiCard icon="📋" label="活動件数" sub={`${periodLabel} / 今月先月比 ${comparisonStats.actsChange >= 0 ? '+' : ''}${comparisonStats.actsChange}件`} value={periodStats.totalAct} color="blue"
               onClick={() => setActivityModal(true)} />
             <KpiCard icon="📅" label="今週アクション" value={stats.weekActions} color="purple" />
             <KpiCard icon="⚠️" label="期限切れ" value={stats.overdue} color="red" alert />

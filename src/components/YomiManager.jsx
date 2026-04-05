@@ -58,7 +58,16 @@ async function callClaude(apiKey, prompt, onChunk) {
   }
 }
 
-export default function YomiManager({ customers, currentUser }) {
+// 顧客の特定月の売上を取得（repMonthlySales → monthlySales の順で参照）
+function getMonthSales(c, monthStr) {
+  const rep = c.repMonthlySales?.[monthStr]
+  if (rep) return Math.round(rep / 10000)
+  const billing = c.monthlySales?.[monthStr]
+  if (billing) return Math.round(billing / 10000)
+  return 0
+}
+
+export default function YomiManager({ customers, currentUser, onUpdateRepSales }) {
   const [selectedMonth, setSelectedMonth] = useState(getMonthStr(0))
   const [selectedRep, setSelectedRep] = useState(currentUser?.role !== 'admin' ? (currentUser?.assignedTo || '') : '')
   const [showHistory, setShowHistory] = useState(false)
@@ -115,6 +124,25 @@ export default function YomiManager({ customers, currentUser }) {
 
   function handleSaveSnapshot() {
     const label = mgr.saveSnapshot(selectedMonth, targetCustomers)
+
+    // 受注金額（juchuAmount）を顧客の repMonthlySales に一括保存
+    if (onUpdateRepSales) {
+      const repSalesMap = {}
+      targetCustomers.forEach(c => {
+        const e = mgr.workingEntries[c.id]
+        if (!e) return
+        const amt = Number(e.juchuAmount)
+        if (amt > 0) {
+          repSalesMap[c.id] = amt * 10000
+        } else if (e.juchuAmount === '' && c.repMonthlySales?.[selectedMonth]) {
+          repSalesMap[c.id] = 0 // クリア
+        }
+      })
+      if (Object.keys(repSalesMap).length > 0) {
+        onUpdateRepSales(selectedMonth, repSalesMap)
+      }
+    }
+
     setSaveMsg(`✅ 「${label}」として保存しました`)
     setTimeout(() => setSaveMsg(''), 3000)
   }
@@ -334,6 +362,7 @@ ${JSON.stringify(rows.slice(0, 20), null, 2)}
                     <th className="table-header text-right text-gray-500 text-xs">{getMonthLabel(prevMonth1)}<br/>実績</th>
                     <th className="table-header text-right text-blue-600 text-xs">{getMonthLabel(selectedMonth)}<br/>ヨミ（万円）</th>
                     <th className="table-header text-center text-blue-600 text-xs">ランク</th>
+                    <th className="table-header text-right text-green-600 text-xs">{getMonthLabel(selectedMonth)}<br/>受注金額</th>
                     <th className="table-header text-left text-xs">メモ</th>
                   </tr>
                 </thead>
@@ -342,12 +371,12 @@ ${JSON.stringify(rows.slice(0, 20), null, 2)}
                     <tr><td colSpan={8} className="py-12 text-center text-gray-400 text-sm">対象顧客なし</td></tr>
                   ) : targetCustomers.map(c => {
                     const e = mgr.workingEntries[c.id] || {}
-                    const prevAmt1 = c.status === '成約' && c.updatedAt?.startsWith(prevMonth1) ? (Number(c.dealAmount) || 0) : 0
-                    const prevAmt2 = c.status === '成約' && c.updatedAt?.startsWith(prevMonth2) ? (Number(c.dealAmount) || 0) : 0
                     const isWon = c.status === '成約'
+                    const prevAmt1 = getMonthSales(c, prevMonth1)
+                    const prevAmt2 = getMonthSales(c, prevMonth2)
 
                     return (
-                      <tr key={c.id} className={`${isWon ? 'bg-green-50 opacity-70' : 'hover:bg-blue-50/30'} transition-colors`}>
+                      <tr key={c.id} className={`${isWon ? 'bg-green-50' : 'hover:bg-blue-50/30'} transition-colors`}>
                         <td className="table-cell">
                           <div className="font-semibold text-gray-900 text-sm">{c.companyName}</div>
                           {c.industry && <div className="text-xs text-gray-400">{c.industry}</div>}
@@ -360,19 +389,19 @@ ${JSON.stringify(rows.slice(0, 20), null, 2)}
                         <td className="table-cell text-center">
                           <StatusBadge status={c.status} />
                         </td>
-                        {/* 先々月 */}
+                        {/* 先々月実績 */}
                         <td className="table-cell text-right">
                           {prevAmt2 > 0 ? (
                             <span className="text-xs text-gray-400">{prevAmt2.toLocaleString()}万</span>
                           ) : <span className="text-gray-200 text-xs">—</span>}
                         </td>
-                        {/* 先月 */}
+                        {/* 先月実績 */}
                         <td className="table-cell text-right">
                           {prevAmt1 > 0 ? (
                             <span className="text-sm font-semibold text-gray-600">{prevAmt1.toLocaleString()}万</span>
                           ) : <span className="text-gray-200 text-xs">—</span>}
                         </td>
-                        {/* ヨミ入力 */}
+                        {/* ヨミ入力（商談中・見込みのみ） */}
                         <td className="table-cell">
                           <input
                             type="number"
@@ -401,6 +430,21 @@ ${JSON.stringify(rows.slice(0, 20), null, 2)}
                             ))}
                           </div>
                         </td>
+                        {/* 受注金額（全ステータスで入力可） */}
+                        <td className="table-cell">
+                          <input
+                            type="number"
+                            min="0"
+                            value={e.juchuAmount || ''}
+                            onChange={ev => mgr.updateEntry(c.id, 'juchuAmount', ev.target.value)}
+                            placeholder="0"
+                            className={`w-24 text-right px-2 py-1 border rounded-lg text-sm font-medium focus:ring-1 outline-none ml-auto block transition-colors ${
+                              isWon
+                                ? 'border-green-300 bg-green-50 text-green-700 focus:border-green-400 focus:ring-green-200'
+                                : 'border-gray-200 focus:border-green-400 focus:ring-green-200'
+                            }`}
+                          />
+                        </td>
                         {/* メモ */}
                         <td className="table-cell">
                           <input
@@ -423,7 +467,17 @@ ${JSON.stringify(rows.slice(0, 20), null, 2)}
                     <td className="table-cell text-right text-sm font-bold text-blue-700">
                       {totalYomi > 0 ? `${totalYomi.toLocaleString()} 万円` : '—'}
                     </td>
-                    <td colSpan={2}></td>
+                    <td></td>
+                    <td className="table-cell text-right text-sm font-bold text-green-700">
+                      {(() => {
+                        const total = targetCustomers.reduce((s, c) => {
+                          const e = mgr.workingEntries[c.id]
+                          return s + (Number(e?.juchuAmount) || 0)
+                        }, 0)
+                        return total > 0 ? `${total.toLocaleString()} 万円` : '—'
+                      })()}
+                    </td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
