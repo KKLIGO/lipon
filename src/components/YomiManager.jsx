@@ -6,6 +6,43 @@ const AI_KEY = 'crm_ai_key_v1'
 function loadApiKey() { try { return localStorage.getItem(AI_KEY) || '' } catch { return '' } }
 
 const FORECAST_OPTS = ['', 'A', 'B', 'C', 'D']
+
+// 商品マスタ（Salesforce Product2 から抽出）
+const PRODUCTS = [
+  { code: 'a000001', name: 'Indeed 広告費', family: 'Indeed' },
+  { code: 'a000002', name: 'Indeed 運用費', family: 'Indeed' },
+  { code: 'a000005', name: 'Indeed 広告費・運用費', family: 'Indeed' },
+  { code: 'c000007', name: 'Indeed企業ページ制作費', family: 'Indeed' },
+  { code: 'b000002', name: 'ドラEVER 広告費', family: 'ドラEVER' },
+  { code: 'c000004', name: 'ドラEVERスカウトメール（500通）', family: 'ドラEVER' },
+  { code: 'c000005', name: 'ドラEVERスカウトメール（1,000通）', family: 'ドラEVER' },
+  { code: 'b000003', name: 'doda 広告費', family: 'doda' },
+  { code: 'dd-00003', name: 'doda 原稿（12週間）', family: 'doda' },
+  { code: 'dd-00003', name: 'doda ダイレクト（12週間）', family: 'doda' },
+  { code: 'dd-00006', name: 'dodaダイレクト（12週）', family: 'doda' },
+  { code: 'd000002', name: 'dodaダイレクト配信代行', family: 'doda' },
+  { code: 'b000003', name: '求人ボックス 広告費', family: '求人ボックス' },
+  { code: 'b000004', name: '求人ボックス 運用費', family: '求人ボックス' },
+  { code: 'c000006', name: 'Airワーク 広告費', family: 'Airワーク' },
+  { code: 'c000007', name: 'Airワーク 運用費', family: 'Airワーク' },
+  { code: 'c000008', name: 'Airワーク（新規）', family: 'Airワーク' },
+  { code: 'e000001', name: 'GoogleBusinessProfile 運用費（新規）', family: 'GBP' },
+  { code: 'e000002', name: 'GoogleBusinessProfile 運用費（継続）', family: 'GBP' },
+  { code: 'e000003', name: 'ホームページ 制作費', family: 'HP' },
+  { code: 'e000004', name: 'ホームページ 運用費', family: 'HP' },
+  { code: 'e000005', name: 'SNS 運用費', family: 'HP' },
+  { code: 'd000003', name: '採用代行（継続）', family: '採用代行' },
+  { code: 'd000003', name: '採用代行（新規）', family: '採用代行' },
+  { code: 'h000001', name: 'ハコプロ 運用費', family: 'ハコプロ' },
+  { code: 'h000002', name: 'ハコプロ 広告費', family: 'ハコプロ' },
+  { code: 'y000002', name: 'ヤギオファー（1,000通）', family: 'ヤギオファー' },
+  { code: 'b000009', name: 'しゅふJOB（応募課金型）', family: 'しゅふJOB' },
+  { code: 'b000005', name: 'バイトル広告費', family: 'その他' },
+  { code: '', name: 'その他', family: 'その他' },
+]
+
+// family ごとにグループ化
+const PRODUCT_FAMILIES = [...new Set(PRODUCTS.map(p => p.family))]
 const FORECAST_COLORS = {
   A: 'bg-green-100 text-green-700 border-green-300',
   B: 'bg-blue-100 text-blue-700 border-blue-300',
@@ -360,6 +397,7 @@ ${JSON.stringify(rows.slice(0, 20), null, 2)}
                     <th className="table-header text-center">ステータス</th>
                     <th className="table-header text-right text-gray-400 text-xs">{getMonthLabel(prevMonth2)}<br/>実績</th>
                     <th className="table-header text-right text-gray-500 text-xs">{getMonthLabel(prevMonth1)}<br/>実績</th>
+                    <th className="table-header text-left text-xs">商品</th>
                     <th className="table-header text-right text-blue-600 text-xs">{getMonthLabel(selectedMonth)}<br/>ヨミ（万円）</th>
                     <th className="table-header text-center text-blue-600 text-xs">ランク</th>
                     <th className="table-header text-right text-green-600 text-xs">{getMonthLabel(selectedMonth)}<br/>受注金額</th>
@@ -400,6 +438,25 @@ ${JSON.stringify(rows.slice(0, 20), null, 2)}
                           {prevAmt1 > 0 ? (
                             <span className="text-sm font-semibold text-gray-600">{prevAmt1.toLocaleString()}万</span>
                           ) : <span className="text-gray-200 text-xs">—</span>}
+                        </td>
+                        {/* 商品コード */}
+                        <td className="table-cell">
+                          <select
+                            value={e.productCode || ''}
+                            onChange={ev => mgr.updateEntry(c.id, 'productCode', ev.target.value)}
+                            className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-700 focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none bg-white min-w-[140px]"
+                          >
+                            <option value="">— 選択 —</option>
+                            {PRODUCT_FAMILIES.map(family => (
+                              <optgroup key={family} label={family}>
+                                {PRODUCTS.filter(p => p.family === family).map((p, i) => (
+                                  <option key={p.code + p.name + i} value={p.code}>
+                                    {p.code ? `[${p.code}] ` : ''}{p.name}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
                         </td>
                         {/* ヨミ入力（商談中・見込みのみ） */}
                         <td className="table-cell">
@@ -463,7 +520,7 @@ ${JSON.stringify(rows.slice(0, 20), null, 2)}
                 {/* Footer total */}
                 <tfoot>
                   <tr className="bg-blue-50 border-t-2 border-blue-200">
-                    <td colSpan={!selectedRep ? 5 : 4} className="table-cell text-right text-sm font-semibold text-blue-700">合計</td>
+                    <td colSpan={!selectedRep ? 6 : 5} className="table-cell text-right text-sm font-semibold text-blue-700">合計</td>
                     <td className="table-cell text-right text-sm font-bold text-blue-700">
                       {totalYomi > 0 ? `${totalYomi.toLocaleString()} 万円` : '—'}
                     </td>

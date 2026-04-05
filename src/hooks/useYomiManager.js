@@ -53,7 +53,7 @@ export function useYomiManager() {
     if (snaps.length > 0) {
       const latest = snaps[snaps.length - 1]
       latest.entries.forEach(e => {
-        map[e.customerId] = { yomiAmount: e.yomiAmount, yomiRank: e.yomiRank, note: e.note, juchuAmount: e.juchuAmount || '' }
+        map[e.customerId] = { yomiAmount: e.yomiAmount, yomiRank: e.yomiRank, note: e.note, juchuAmount: e.juchuAmount || '', productCode: e.productCode || '' }
       })
     } else {
       list.forEach(c => {
@@ -63,6 +63,7 @@ export function useYomiManager() {
             yomiRank: c.forecast || '',
             note: '',
             juchuAmount: '',
+            productCode: '',
           }
         }
       })
@@ -119,6 +120,7 @@ export function useYomiManager() {
           yomiRank: e.yomiRank || '',
           note: e.note || '',
           juchuAmount: juchuAmt,
+          productCode: e.productCode || '',
         })
       }
     })
